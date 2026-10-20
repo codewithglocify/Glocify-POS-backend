@@ -1,5 +1,5 @@
 import { PasswordHasher } from '@nestjs/authentication';
-import { PrismaClient } from '../dist/generated/prisma/client.js';
+import { PrismaClient } from '../../dist/generated/prisma/client.js';
 
 export default async function (prisma: PrismaClient) {
   const orgUuid = crypto.randomUUID();
@@ -27,7 +27,5 @@ export default async function (prisma: PrismaClient) {
     },
   });
 
-  console.info(
-    `Generated a mock organization... Admin is ${organizationAdmin.email}`,
-  );
+  console.info(`Generated a mock organization... Admin is ${organizationAdmin.email}`);
 }

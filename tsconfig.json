@@ -20,7 +20,7 @@
     "strictPropertyInitialization": false,
     "types": ["vitest/globals", "node"],
     "paths": {
-      "@/generated": ["./src/generated"],
+      "@/generated": ["./src/generated"]
     }
   }
 }

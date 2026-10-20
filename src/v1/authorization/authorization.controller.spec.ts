@@ -56,9 +56,7 @@ describe('AuthorizationController', () => {
   });
 
   it('delegates refresh', async () => {
-    await expect(
-      controller.refresh({ refreshToken: 'refresh' }),
-    ).resolves.toEqual({
+    await expect(controller.refresh({ refreshToken: 'refresh' })).resolves.toEqual({
       accessToken: 'access-2',
       refreshToken: 'refresh-2',
       expiresIn: 3600,
@@ -66,9 +64,7 @@ describe('AuthorizationController', () => {
   });
 
   it('delegates logout', async () => {
-    await expect(
-      controller.logout({ refreshToken: 'refresh' }),
-    ).resolves.toBeUndefined();
+    await expect(controller.logout({ refreshToken: 'refresh' })).resolves.toBeUndefined();
     expect(service.logout).toHaveBeenCalledWith('refresh');
   });
 });

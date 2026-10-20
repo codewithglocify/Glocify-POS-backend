@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  AuthenticationRegistry,
-  JwtBearerProvider,
-  type JwtClaims,
-} from '@nestjs/authentication';
+import { AuthenticationRegistry, JwtBearerProvider, type JwtClaims } from '@nestjs/authentication';
 import type { AppUser } from '../../generated/prisma/client.js';
 import { AppUserStatus } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';

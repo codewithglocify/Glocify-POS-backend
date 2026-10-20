@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import {
-  AuthenticationModule,
-  type Duration,
-} from '@nestjs/authentication';
+import { AuthenticationModule, type Duration } from '@nestjs/authentication';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
