@@ -1,0 +1,1659 @@
+import { type PrismaClient, DataPlane, PriceTaxMode, TaxModel } from "../dist/generated/prisma/client.js";
+
+const REGIONS = [
+    {
+        "code": "NAM",
+        "name": "North America",
+        "dataPlane": DataPlane.NAM
+    },
+    {
+        "code": "LATAM",
+        "name": "Latin America",
+        "dataPlane": DataPlane.NAM
+    },
+    {
+        "code": "EMEA",
+        "name": "Europe, Middle East and Africa",
+        "dataPlane": DataPlane.EMEA
+    },
+    {
+        "code": "APAC",
+        "name": "Asia-Pacific",
+        "dataPlane": DataPlane.APAC
+    },
+    {
+        "code": "ANZ",
+        "name": "Australia and New Zealand",
+        "dataPlane": DataPlane.APAC
+    }
+];
+
+const COUNTRIES = [
+    {
+        "regionCode": "NAM",
+        "isoCode": "US",
+        "name": "United States",
+        "defaultCurrencyCode": "USD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/New_York",
+        "taxModel": TaxModel.SALES_TAX,
+        "priceTaxMode": PriceTaxMode.EXCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "NAM",
+        "isoCode": "CA",
+        "name": "Canada",
+        "defaultCurrencyCode": "CAD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Toronto",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.EXCLUSIVE,
+        "fiscalRegime": "GST_HST"
+    },
+    {
+        "regionCode": "NAM",
+        "isoCode": "GL",
+        "name": "Greenland",
+        "defaultCurrencyCode": "DKK",
+        "defaultLanguageCode": "kl",
+        "timezone": "America/Nuuk",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "NAM",
+        "isoCode": "BM",
+        "name": "Bermuda",
+        "defaultCurrencyCode": "BMD",
+        "defaultLanguageCode": "en",
+        "timezone": "Atlantic/Bermuda",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "NAM",
+        "isoCode": "MX",
+        "name": "Mexico",
+        "defaultCurrencyCode": "MXN",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Mexico_City",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "NAM",
+        "isoCode": "PM",
+        "name": "Saint Pierre and Miquelon",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "fr",
+        "timezone": "America/Miquelon",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "NAM",
+        "isoCode": "GL",
+        "name": "Greenland",
+        "defaultCurrencyCode": "DKK",
+        "defaultLanguageCode": "kl",
+        "timezone": "America/Nuuk",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "AG",
+        "name": "Antigua and Barbuda",
+        "defaultCurrencyCode": "XCD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Antigua",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "ABST"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "AR",
+        "name": "Argentina",
+        "defaultCurrencyCode": "ARS",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Argentina/Buenos_Aires",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "AW",
+        "name": "Aruba",
+        "defaultCurrencyCode": "AWG",
+        "defaultLanguageCode": "nl",
+        "timezone": "America/Aruba",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "BBO"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "BS",
+        "name": "Bahamas",
+        "defaultCurrencyCode": "BSD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Nassau",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "BB",
+        "name": "Barbados",
+        "defaultCurrencyCode": "BBD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Barbados",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "BZ",
+        "name": "Belize",
+        "defaultCurrencyCode": "BZD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Belize",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "BO",
+        "name": "Bolivia",
+        "defaultCurrencyCode": "BOB",
+        "defaultLanguageCode": "es",
+        "timezone": "America/La_Paz",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "BR",
+        "name": "Brazil",
+        "defaultCurrencyCode": "BRL",
+        "defaultLanguageCode": "pt",
+        "timezone": "America/Sao_Paulo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "ICMS"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "CL",
+        "name": "Chile",
+        "defaultCurrencyCode": "CLP",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Santiago",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "CO",
+        "name": "Colombia",
+        "defaultCurrencyCode": "COP",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Bogota",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "CR",
+        "name": "Costa Rica",
+        "defaultCurrencyCode": "CRC",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Costa_Rica",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "CU",
+        "name": "Cuba",
+        "defaultCurrencyCode": "CUP",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Havana",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "CW",
+        "name": "Curacao",
+        "defaultCurrencyCode": "ANG",
+        "defaultLanguageCode": "nl",
+        "timezone": "America/Curacao",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "OB"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "DM",
+        "name": "Dominica",
+        "defaultCurrencyCode": "XCD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Dominica",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "DO",
+        "name": "Dominican Republic",
+        "defaultCurrencyCode": "DOP",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Santo_Domingo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "ITBIS"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "EC",
+        "name": "Ecuador",
+        "defaultCurrencyCode": "USD",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Guayaquil",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "SV",
+        "name": "El Salvador",
+        "defaultCurrencyCode": "USD",
+        "defaultLanguageCode": "es",
+        "timezone": "America/El_Salvador",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "GD",
+        "name": "Grenada",
+        "defaultCurrencyCode": "XCD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Grenada",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "GT",
+        "name": "Guatemala",
+        "defaultCurrencyCode": "GTQ",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Guatemala",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "GY",
+        "name": "Guyana",
+        "defaultCurrencyCode": "GYD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Guyana",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "HT",
+        "name": "Haiti",
+        "defaultCurrencyCode": "HTG",
+        "defaultLanguageCode": "fr",
+        "timezone": "America/Port-au-Prince",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "TCA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "HN",
+        "name": "Honduras",
+        "defaultCurrencyCode": "HNL",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Tegucigalpa",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "ISV"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "JM",
+        "name": "Jamaica",
+        "defaultCurrencyCode": "JMD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Jamaica",
+        "taxModel": TaxModel.CONSUMPTION_TAX,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GCT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "NI",
+        "name": "Nicaragua",
+        "defaultCurrencyCode": "NIO",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Managua",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "PA",
+        "name": "Panama",
+        "defaultCurrencyCode": "PAB",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Panama",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "ITBMS"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "PY",
+        "name": "Paraguay",
+        "defaultCurrencyCode": "PYG",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Asuncion",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "PE",
+        "name": "Peru",
+        "defaultCurrencyCode": "PEN",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Lima",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IGV"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "KN",
+        "name": "Saint Kitts and Nevis",
+        "defaultCurrencyCode": "XCD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/St_Kitts",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "LC",
+        "name": "Saint Lucia",
+        "defaultCurrencyCode": "XCD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/St_Lucia",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "VC",
+        "name": "Saint Vincent and the Grenadines",
+        "defaultCurrencyCode": "XCD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/St_Vincent",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "SR",
+        "name": "Suriname",
+        "defaultCurrencyCode": "SRD",
+        "defaultLanguageCode": "nl",
+        "timezone": "America/Paramaribo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "TT",
+        "name": "Trinidad and Tobago",
+        "defaultCurrencyCode": "TTD",
+        "defaultLanguageCode": "en",
+        "timezone": "America/Port_of_Spain",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "UY",
+        "name": "Uruguay",
+        "defaultCurrencyCode": "UYU",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Montevideo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "LATAM",
+        "isoCode": "VE",
+        "name": "Venezuela",
+        "defaultCurrencyCode": "VES",
+        "defaultLanguageCode": "es",
+        "timezone": "America/Caracas",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IVA"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "AL",
+        "name": "Albania",
+        "defaultCurrencyCode": "ALL",
+        "defaultLanguageCode": "sq",
+        "timezone": "Europe/Tirane",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "TVSH"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "AD",
+        "name": "Andorra",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "ca",
+        "timezone": "Europe/Andorra",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "IGI"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "AM",
+        "name": "Armenia",
+        "defaultCurrencyCode": "AMD",
+        "defaultLanguageCode": "hy",
+        "timezone": "Asia/Yerevan",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "AT",
+        "name": "Austria",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "de",
+        "timezone": "Europe/Vienna",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "AZ",
+        "name": "Azerbaijan",
+        "defaultCurrencyCode": "AZN",
+        "defaultLanguageCode": "az",
+        "timezone": "Asia/Baku",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "BH",
+        "name": "Bahrain",
+        "defaultCurrencyCode": "BHD",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Bahrain",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "BY",
+        "name": "Belarus",
+        "defaultCurrencyCode": "BYN",
+        "defaultLanguageCode": "be",
+        "timezone": "Europe/Minsk",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "BE",
+        "name": "Belgium",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "nl",
+        "timezone": "Europe/Brussels",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "BA",
+        "name": "Bosnia and Herzegovina",
+        "defaultCurrencyCode": "BAM",
+        "defaultLanguageCode": "bs",
+        "timezone": "Europe/Sarajevo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "BG",
+        "name": "Bulgaria",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "bg",
+        "timezone": "Europe/Sofia",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "HR",
+        "name": "Croatia",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "hr",
+        "timezone": "Europe/Zagreb",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "CY",
+        "name": "Cyprus",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "el",
+        "timezone": "Asia/Nicosia",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "CZ",
+        "name": "Czechia",
+        "defaultCurrencyCode": "CZK",
+        "defaultLanguageCode": "cs",
+        "timezone": "Europe/Prague",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "DK",
+        "name": "Denmark",
+        "defaultCurrencyCode": "DKK",
+        "defaultLanguageCode": "da",
+        "timezone": "Europe/Copenhagen",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "EE",
+        "name": "Estonia",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "et",
+        "timezone": "Europe/Tallinn",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "FI",
+        "name": "Finland",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "fi",
+        "timezone": "Europe/Helsinki",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "FR",
+        "name": "France",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "fr",
+        "timezone": "Europe/Paris",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "GE",
+        "name": "Georgia",
+        "defaultCurrencyCode": "GEL",
+        "defaultLanguageCode": "ka",
+        "timezone": "Asia/Tbilisi",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "DE",
+        "name": "Germany",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "de",
+        "timezone": "Europe/Berlin",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "GR",
+        "name": "Greece",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "el",
+        "timezone": "Europe/Athens",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "HU",
+        "name": "Hungary",
+        "defaultCurrencyCode": "HUF",
+        "defaultLanguageCode": "hu",
+        "timezone": "Europe/Budapest",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "IS",
+        "name": "Iceland",
+        "defaultCurrencyCode": "ISK",
+        "defaultLanguageCode": "is",
+        "timezone": "Atlantic/Reykjavik",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VSK"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "IE",
+        "name": "Ireland",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "en",
+        "timezone": "Europe/Dublin",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "IL",
+        "name": "Israel",
+        "defaultCurrencyCode": "ILS",
+        "defaultLanguageCode": "he",
+        "timezone": "Asia/Jerusalem",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "IT",
+        "name": "Italy",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "it",
+        "timezone": "Europe/Rome",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "JO",
+        "name": "Jordan",
+        "defaultCurrencyCode": "JOD",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Amman",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "KW",
+        "name": "Kuwait",
+        "defaultCurrencyCode": "KWD",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Kuwait",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "LV",
+        "name": "Latvia",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "lv",
+        "timezone": "Europe/Riga",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "LB",
+        "name": "Lebanon",
+        "defaultCurrencyCode": "LBP",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Beirut",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "LI",
+        "name": "Liechtenstein",
+        "defaultCurrencyCode": "CHF",
+        "defaultLanguageCode": "de",
+        "timezone": "Europe/Vaduz",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "LT",
+        "name": "Lithuania",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "lt",
+        "timezone": "Europe/Vilnius",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "LU",
+        "name": "Luxembourg",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "fr",
+        "timezone": "Europe/Luxembourg",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "MT",
+        "name": "Malta",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "mt",
+        "timezone": "Europe/Malta",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "MD",
+        "name": "Moldova",
+        "defaultCurrencyCode": "MDL",
+        "defaultLanguageCode": "ro",
+        "timezone": "Europe/Chisinau",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "MC",
+        "name": "Monaco",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "fr",
+        "timezone": "Europe/Monaco",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "ME",
+        "name": "Montenegro",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "sr",
+        "timezone": "Europe/Podgorica",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "MA",
+        "name": "Morocco",
+        "defaultCurrencyCode": "MAD",
+        "defaultLanguageCode": "ar",
+        "timezone": "Africa/Casablanca",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "NL",
+        "name": "Netherlands",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "nl",
+        "timezone": "Europe/Amsterdam",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "MK",
+        "name": "North Macedonia",
+        "defaultCurrencyCode": "MKD",
+        "defaultLanguageCode": "mk",
+        "timezone": "Europe/Skopje",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "NO",
+        "name": "Norway",
+        "defaultCurrencyCode": "NOK",
+        "defaultLanguageCode": "nb",
+        "timezone": "Europe/Oslo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "MVA"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "OM",
+        "name": "Oman",
+        "defaultCurrencyCode": "OMR",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Muscat",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "PL",
+        "name": "Poland",
+        "defaultCurrencyCode": "PLN",
+        "defaultLanguageCode": "pl",
+        "timezone": "Europe/Warsaw",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "PT",
+        "name": "Portugal",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "pt",
+        "timezone": "Europe/Lisbon",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "QA",
+        "name": "Qatar",
+        "defaultCurrencyCode": "QAR",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Qatar",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "RO",
+        "name": "Romania",
+        "defaultCurrencyCode": "RON",
+        "defaultLanguageCode": "ro",
+        "timezone": "Europe/Bucharest",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "RU",
+        "name": "Russia",
+        "defaultCurrencyCode": "RUB",
+        "defaultLanguageCode": "ru",
+        "timezone": "Europe/Moscow",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "SM",
+        "name": "San Marino",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "it",
+        "timezone": "Europe/San_Marino",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "SA",
+        "name": "Saudi Arabia",
+        "defaultCurrencyCode": "SAR",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Riyadh",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "RS",
+        "name": "Serbia",
+        "defaultCurrencyCode": "RSD",
+        "defaultLanguageCode": "sr",
+        "timezone": "Europe/Belgrade",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "SK",
+        "name": "Slovakia",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "sk",
+        "timezone": "Europe/Bratislava",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "SI",
+        "name": "Slovenia",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "sl",
+        "timezone": "Europe/Ljubljana",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "ZA",
+        "name": "South Africa",
+        "defaultCurrencyCode": "ZAR",
+        "defaultLanguageCode": "en",
+        "timezone": "Africa/Johannesburg",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "ES",
+        "name": "Spain",
+        "defaultCurrencyCode": "EUR",
+        "defaultLanguageCode": "es",
+        "timezone": "Europe/Madrid",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "SE",
+        "name": "Sweden",
+        "defaultCurrencyCode": "SEK",
+        "defaultLanguageCode": "sv",
+        "timezone": "Europe/Stockholm",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "EU_VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "CH",
+        "name": "Switzerland",
+        "defaultCurrencyCode": "CHF",
+        "defaultLanguageCode": "de",
+        "timezone": "Europe/Zurich",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "MWST"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "TR",
+        "name": "Turkey",
+        "defaultCurrencyCode": "TRY",
+        "defaultLanguageCode": "tr",
+        "timezone": "Europe/Istanbul",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "KDV"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "UA",
+        "name": "Ukraine",
+        "defaultCurrencyCode": "UAH",
+        "defaultLanguageCode": "uk",
+        "timezone": "Europe/Kyiv",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "AE",
+        "name": "United Arab Emirates",
+        "defaultCurrencyCode": "AED",
+        "defaultLanguageCode": "ar",
+        "timezone": "Asia/Dubai",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "GB",
+        "name": "United Kingdom",
+        "defaultCurrencyCode": "GBP",
+        "defaultLanguageCode": "en",
+        "timezone": "Europe/London",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "EG",
+        "name": "Egypt",
+        "defaultCurrencyCode": "EGP",
+        "defaultLanguageCode": "ar",
+        "timezone": "Africa/Cairo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "NG",
+        "name": "Nigeria",
+        "defaultCurrencyCode": "NGN",
+        "defaultLanguageCode": "en",
+        "timezone": "Africa/Lagos",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "KE",
+        "name": "Kenya",
+        "defaultCurrencyCode": "KES",
+        "defaultLanguageCode": "en",
+        "timezone": "Africa/Nairobi",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "GH",
+        "name": "Ghana",
+        "defaultCurrencyCode": "GHS",
+        "defaultLanguageCode": "en",
+        "timezone": "Africa/Accra",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "TZ",
+        "name": "Tanzania",
+        "defaultCurrencyCode": "TZS",
+        "defaultLanguageCode": "sw",
+        "timezone": "Africa/Dar_es_Salaam",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "EMEA",
+        "isoCode": "UG",
+        "name": "Uganda",
+        "defaultCurrencyCode": "UGX",
+        "defaultLanguageCode": "en",
+        "timezone": "Africa/Kampala",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "AF",
+        "name": "Afghanistan",
+        "defaultCurrencyCode": "AFN",
+        "defaultLanguageCode": "fa",
+        "timezone": "Asia/Kabul",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "BD",
+        "name": "Bangladesh",
+        "defaultCurrencyCode": "BDT",
+        "defaultLanguageCode": "bn",
+        "timezone": "Asia/Dhaka",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "BT",
+        "name": "Bhutan",
+        "defaultCurrencyCode": "BTN",
+        "defaultLanguageCode": "dz",
+        "timezone": "Asia/Thimphu",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "BN",
+        "name": "Brunei",
+        "defaultCurrencyCode": "BND",
+        "defaultLanguageCode": "ms",
+        "timezone": "Asia/Brunei",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "KH",
+        "name": "Cambodia",
+        "defaultCurrencyCode": "KHR",
+        "defaultLanguageCode": "km",
+        "timezone": "Asia/Phnom_Penh",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "CN",
+        "name": "China",
+        "defaultCurrencyCode": "CNY",
+        "defaultLanguageCode": "zh",
+        "timezone": "Asia/Shanghai",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "HK",
+        "name": "Hong Kong",
+        "defaultCurrencyCode": "HKD",
+        "defaultLanguageCode": "zh",
+        "timezone": "Asia/Hong_Kong",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "IN",
+        "name": "India",
+        "defaultCurrencyCode": "INR",
+        "defaultLanguageCode": "en",
+        "timezone": "Asia/Kolkata",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.EXCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "ID",
+        "name": "Indonesia",
+        "defaultCurrencyCode": "IDR",
+        "defaultLanguageCode": "id",
+        "timezone": "Asia/Jakarta",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "PPN"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "JP",
+        "name": "Japan",
+        "defaultCurrencyCode": "JPY",
+        "defaultLanguageCode": "ja",
+        "timezone": "Asia/Tokyo",
+        "taxModel": TaxModel.CONSUMPTION_TAX,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "CONSUMPTION_TAX"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "KZ",
+        "name": "Kazakhstan",
+        "defaultCurrencyCode": "KZT",
+        "defaultLanguageCode": "kk",
+        "timezone": "Asia/Almaty",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "KP",
+        "name": "North Korea",
+        "defaultCurrencyCode": "KPW",
+        "defaultLanguageCode": "ko",
+        "timezone": "Asia/Pyongyang",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "KR",
+        "name": "South Korea",
+        "defaultCurrencyCode": "KRW",
+        "defaultLanguageCode": "ko",
+        "timezone": "Asia/Seoul",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "KG",
+        "name": "Kyrgyzstan",
+        "defaultCurrencyCode": "KGS",
+        "defaultLanguageCode": "ky",
+        "timezone": "Asia/Bishkek",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "LA",
+        "name": "Laos",
+        "defaultCurrencyCode": "LAK",
+        "defaultLanguageCode": "lo",
+        "timezone": "Asia/Vientiane",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "MO",
+        "name": "Macao",
+        "defaultCurrencyCode": "MOP",
+        "defaultLanguageCode": "zh",
+        "timezone": "Asia/Macau",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "MY",
+        "name": "Malaysia",
+        "defaultCurrencyCode": "MYR",
+        "defaultLanguageCode": "ms",
+        "timezone": "Asia/Kuala_Lumpur",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "SST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "MV",
+        "name": "Maldives",
+        "defaultCurrencyCode": "MVR",
+        "defaultLanguageCode": "dv",
+        "timezone": "Indian/Maldives",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "MN",
+        "name": "Mongolia",
+        "defaultCurrencyCode": "MNT",
+        "defaultLanguageCode": "mn",
+        "timezone": "Asia/Ulaanbaatar",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "MM",
+        "name": "Myanmar",
+        "defaultCurrencyCode": "MMK",
+        "defaultLanguageCode": "my",
+        "timezone": "Asia/Yangon",
+        "taxModel": TaxModel.COMMERCIAL_TAX,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "COMMERCIAL_TAX"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "NP",
+        "name": "Nepal",
+        "defaultCurrencyCode": "NPR",
+        "defaultLanguageCode": "ne",
+        "timezone": "Asia/Kathmandu",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "PK",
+        "name": "Pakistan",
+        "defaultCurrencyCode": "PKR",
+        "defaultLanguageCode": "ur",
+        "timezone": "Asia/Karachi",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "PH",
+        "name": "Philippines",
+        "defaultCurrencyCode": "PHP",
+        "defaultLanguageCode": "en",
+        "timezone": "Asia/Manila",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "SG",
+        "name": "Singapore",
+        "defaultCurrencyCode": "SGD",
+        "defaultLanguageCode": "en",
+        "timezone": "Asia/Singapore",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.EXCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "LK",
+        "name": "Sri Lanka",
+        "defaultCurrencyCode": "LKR",
+        "defaultLanguageCode": "si",
+        "timezone": "Asia/Colombo",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "TW",
+        "name": "Taiwan",
+        "defaultCurrencyCode": "TWD",
+        "defaultLanguageCode": "zh",
+        "timezone": "Asia/Taipei",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "TJ",
+        "name": "Tajikistan",
+        "defaultCurrencyCode": "TJS",
+        "defaultLanguageCode": "tg",
+        "timezone": "Asia/Dushanbe",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "TH",
+        "name": "Thailand",
+        "defaultCurrencyCode": "THB",
+        "defaultLanguageCode": "th",
+        "timezone": "Asia/Bangkok",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "TL",
+        "name": "Timor-Leste",
+        "defaultCurrencyCode": "USD",
+        "defaultLanguageCode": "pt",
+        "timezone": "Asia/Dili",
+        "taxModel": TaxModel.NONE,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "NONE"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "TM",
+        "name": "Turkmenistan",
+        "defaultCurrencyCode": "TMT",
+        "defaultLanguageCode": "tk",
+        "timezone": "Asia/Ashgabat",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "UZ",
+        "name": "Uzbekistan",
+        "defaultCurrencyCode": "UZS",
+        "defaultLanguageCode": "uz",
+        "timezone": "Asia/Tashkent",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "VN",
+        "name": "Vietnam",
+        "defaultCurrencyCode": "VND",
+        "defaultLanguageCode": "vi",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "AU",
+        "name": "Australia",
+        "defaultCurrencyCode": "AUD",
+        "defaultLanguageCode": "en",
+        "timezone": "Australia/Sydney",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "NZ",
+        "name": "New Zealand",
+        "defaultCurrencyCode": "NZD",
+        "defaultLanguageCode": "en",
+        "timezone": "Pacific/Auckland",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "FJ",
+        "name": "Fiji",
+        "defaultCurrencyCode": "FJD",
+        "defaultLanguageCode": "en",
+        "timezone": "Pacific/Fiji",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "PG",
+        "name": "Papua New Guinea",
+        "defaultCurrencyCode": "PGK",
+        "defaultLanguageCode": "en",
+        "timezone": "Pacific/Port_Moresby",
+        "taxModel": TaxModel.GST,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "GST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "WS",
+        "name": "Samoa",
+        "defaultCurrencyCode": "WST",
+        "defaultLanguageCode": "sm",
+        "timezone": "Pacific/Apia",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAGST"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "TO",
+        "name": "Tonga",
+        "defaultCurrencyCode": "TOP",
+        "defaultLanguageCode": "to",
+        "timezone": "Pacific/Tongatapu",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    },
+    {
+        "regionCode": "APAC",
+        "isoCode": "VU",
+        "name": "Vanuatu",
+        "defaultCurrencyCode": "VUV",
+        "defaultLanguageCode": "bi",
+        "timezone": "Pacific/Efate",
+        "taxModel": TaxModel.VAT,
+        "priceTaxMode": PriceTaxMode.INCLUSIVE,
+        "fiscalRegime": "VAT"
+    }
+];
+
+export default async function (prisma: PrismaClient) {
+    const countryRegions = COUNTRIES.map(c => c.regionCode);
+
+    await prisma.region.createMany({
+        data: REGIONS,
+        skipDuplicates: true
+    });
+
+    const regions = await prisma.region.findMany({
+        where: {
+            code: { in: countryRegions }
+        }
+    });
+
+    const regionCodes = Object.fromEntries(regions.map(r => [r.code, r.id]));
+    const countries = COUNTRIES.map((country) => {
+        const c = ({ ...country, regionId: regionCodes[country.regionCode] }) as unknown as (
+            // HACK: force regionCode to be undefined for delete.
+            Omit<typeof COUNTRIES[number], 'regionCode'> & { regionCode: undefined, regionId: string }
+        );
+
+        delete c.regionCode;
+
+        return c;
+    });
+
+    await prisma.country.createMany({
+        data: countries,
+        skipDuplicates: true,
+    });
+}

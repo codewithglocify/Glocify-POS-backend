@@ -1,0 +1,413 @@
+import { PrismaClient } from "../dist/generated/prisma/client.js";
+
+const LANGUAGES = [
+    {
+        "code": "ar",
+        "name": "Arabic",
+        "isRtl": true,
+        "isActive": true
+    },
+    {
+        "code": "az",
+        "name": "Azerbaijani",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "be",
+        "name": "Belarusian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "bg",
+        "name": "Bulgarian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "bi",
+        "name": "Bislama",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "bn",
+        "name": "Bengali",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "bs",
+        "name": "Bosnian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ca",
+        "name": "Catalan",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "cs",
+        "name": "Czech",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "da",
+        "name": "Danish",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "de",
+        "name": "German",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "dv",
+        "name": "Dhivehi",
+        "isRtl": true,
+        "isActive": true
+    },
+    {
+        "code": "dz",
+        "name": "Dzongkha",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "el",
+        "name": "Greek",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "en",
+        "name": "English",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "es",
+        "name": "Spanish",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "et",
+        "name": "Estonian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "fa",
+        "name": "Persian",
+        "isRtl": true,
+        "isActive": true
+    },
+    {
+        "code": "fi",
+        "name": "Finnish",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "fr",
+        "name": "French",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "he",
+        "name": "Hebrew",
+        "isRtl": true,
+        "isActive": true
+    },
+    {
+        "code": "hr",
+        "name": "Croatian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "hu",
+        "name": "Hungarian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "hy",
+        "name": "Armenian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "id",
+        "name": "Indonesian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "is",
+        "name": "Icelandic",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "it",
+        "name": "Italian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ja",
+        "name": "Japanese",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ka",
+        "name": "Georgian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "kk",
+        "name": "Kazakh",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "kl",
+        "name": "Greenlandic",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "km",
+        "name": "Khmer",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ko",
+        "name": "Korean",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ky",
+        "name": "Kyrgyz",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "lo",
+        "name": "Lao",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "lt",
+        "name": "Lithuanian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "lv",
+        "name": "Latvian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "mk",
+        "name": "Macedonian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "mn",
+        "name": "Mongolian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ms",
+        "name": "Malay",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "mt",
+        "name": "Maltese",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "my",
+        "name": "Burmese",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "nb",
+        "name": "Norwegian Bokmål",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ne",
+        "name": "Nepali",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "nl",
+        "name": "Dutch",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "pl",
+        "name": "Polish",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "pt",
+        "name": "Portuguese",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ro",
+        "name": "Romanian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ru",
+        "name": "Russian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "si",
+        "name": "Sinhala",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sk",
+        "name": "Slovak",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sl",
+        "name": "Slovenian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sm",
+        "name": "Samoan",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sq",
+        "name": "Albanian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sr",
+        "name": "Serbian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sv",
+        "name": "Swedish",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "sw",
+        "name": "Swahili",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "tg",
+        "name": "Tajik",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "th",
+        "name": "Thai",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "tk",
+        "name": "Turkmen",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "to",
+        "name": "Tongan",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "tr",
+        "name": "Turkish",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "uk",
+        "name": "Ukrainian",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "ur",
+        "name": "Urdu",
+        "isRtl": true,
+        "isActive": true
+    },
+    {
+        "code": "uz",
+        "name": "Uzbek",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "vi",
+        "name": "Vietnamese",
+        "isRtl": false,
+        "isActive": true
+    },
+    {
+        "code": "zh",
+        "name": "Chinese",
+        "isRtl": false,
+        "isActive": true
+    }
+]
+
+export default async function (prisma: PrismaClient) {
+    await prisma.language.createMany({
+        data: LANGUAGES,
+        skipDuplicates: true,
+    });
+}

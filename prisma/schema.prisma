@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["pos"]
+}
+
+enum ActiveStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("active_status")
+  @@schema("pos")
+}
+
+enum DataPlane {
+  NAM
+  EMEA
+  APAC
+
+  @@map("data_plane")
+  @@schema("pos")
+}
+
+enum TaxModel {
+  VAT
+  GST
+  SALES_TAX
+  CONSUMPTION_TAX
+  COMMERCIAL_TAX
+  NONE
+
+  @@map("tax_model")
+  @@schema("pos")
+}
+
+enum PriceTaxMode {
+  INCLUSIVE
+  EXCLUSIVE
+
+  @@map("price_tax_mode")
+  @@schema("pos")
+}
+
+enum AppUserStatus {
+  ACTIVE
+  SUSPENDED
+  LEFT
+
+  @@map("app_user_status")
+  @@schema("pos")
+}
+
+enum ScopeType {
+  ORGANIZATION
+  BRAND
+  REGION
+  COUNTRY
+  STORE
+  TERMINAL
+
+  @@map("scope_type")
+  @@schema("pos")
+}
+
+model Currency {
+  code                  String    @id @db.Char(3)
+  numericCode           String    @map("numeric_code") @db.Char(3)
+  minorUnits            Int       @map("minor_units") @db.SmallInt
+  cashRoundingIncrement Decimal?  @map("cash_rounding_increment") @db.Decimal(19, 4)
+  name                  String
+  isActive              Boolean   @default(true) @map("is_active")
+  countries             Country[]
+
+  @@map("currencies")
+  @@schema("pos")
+}
+
+model Language {
+  code      String    @id
+  name      String
+  isRtl     Boolean   @default(false) @map("is_rtl")
+  isActive  Boolean   @default(true) @map("is_active")
+  countries Country[]
+
+  @@map("languages")
+  @@schema("pos")
+}
+
+model Region {
+  id                  String               @id @default(uuid()) @db.Uuid
+  code                String               @unique
+  name                String
+  dataPlane           DataPlane            @map("data_plane")
+  countries           Country[]
+  organizationRegions OrganizationRegion[]
+
+  @@map("regions")
+  @@schema("pos")
+}
+
+model Country {
+  id                  String       @id @default(uuid()) @db.Uuid
+  regionId            String       @map("region_id") @db.Uuid
+  isoCode             String       @unique @map("iso_code") @db.Char(2)
+  name                String
+  defaultCurrencyCode String       @map("default_currency") @db.Char(3)
+  defaultLanguageCode String       @map("default_language")
+  timezone            String
+  taxModel            TaxModel     @map("tax_model")
+  priceTaxMode        PriceTaxMode @map("price_tax_mode")
+  fiscalRegime        String       @default("NONE") @map("fiscal_regime")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  region                        Region                @relation(fields: [regionId], references: [id])
+  defaultCurrency               Currency              @relation(fields: [defaultCurrencyCode], references: [code])
+  defaultLanguage               Language              @relation(fields: [defaultLanguageCode], references: [code])
+  organizationCountries         OrganizationCountry[]
+  organizationCountriesInRegion OrganizationCountry[] @relation("CountryInRegion")
+
+  @@unique([id, regionId])
+  @@map("countries")
+  @@schema("pos")
+}
+
+model Organization {
+  id                    String                @id @default(uuid()) @db.Uuid
+  code                  String                @unique
+  legalName             String                @map("legal_name")
+  status                ActiveStatus          @default(ACTIVE)
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  createdBy             String                @map("created_by")
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy             String                @map("updated_by")
+  brands                Brand[]
+  organizationRegions   OrganizationRegion[]
+  organizationCountries OrganizationCountry[]
+  roles                 Role[]
+  appUsers              AppUser[]
+
+  @@map("organizations")
+  @@schema("pos")
+}
+
+model Brand {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  status         ActiveStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  createdBy      String       @map("created_by")
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy      String       @map("updated_by")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, code])
+  @@map("brands")
+  @@schema("pos")
+}
+
+model OrganizationRegion {
+  organizationId String @map("organization_id") @db.Uuid
+  regionId       String @map("region_id") @db.Uuid
+
+  organization          Organization          @relation(fields: [organizationId], references: [id])
+  region                Region                @relation(fields: [regionId], references: [id])
+  organizationCountries OrganizationCountry[]
+
+  @@id([organizationId, regionId])
+  @@map("organization_regions")
+  @@schema("pos")
+}
+
+model OrganizationCountry {
+  organizationId String @map("organization_id") @db.Uuid
+  countryId      String @map("country_id") @db.Uuid
+  regionId       String @map("region_id") @db.Uuid
+
+  organization       Organization       @relation(fields: [organizationId], references: [id])
+  country            Country            @relation(fields: [countryId], references: [id])
+  countryInRegion    Country            @relation("CountryInRegion", fields: [countryId, regionId], references: [id, regionId])
+  organizationRegion OrganizationRegion @relation(fields: [organizationId, regionId], references: [organizationId, regionId])
+
+  @@id([organizationId, countryId])
+  @@map("organization_countries")
+  @@schema("pos")
+}
+
+model Role {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  description    String? @db.Text
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  rolePermissions RolePermission[]
+  userAssignments UserAssignment[]
+
+  @@unique([organizationId, code])
+  @@map("roles")
+  @@schema("pos")
+}
+
+model AppUser {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  externalSubject String        @map("external_subject") @db.Text
+  employeeNumber  String?       @map("employee_number")
+  displayName     String        @map("display_name")
+  email           String
+  status          AppUserStatus
+  pinHash         String        @map("pin_hash")
+  pinSetAt        DateTime      @map("pin_set_at")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  userAssignments UserAssignment[]
+
+  @@unique([organizationId, externalSubject])
+  @@map("app_users")
+  @@schema("pos")
+}
+
+model Permission {
+  id          String @id @default(uuid()) @db.Uuid
+  code        String
+  description String @db.Text
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+  @@schema("pos")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+  @@schema("pos")
+}
+
+model UserAssignment {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  roleId    String    @map("role_id") @db.Uuid
+  scopeType ScopeType @map("scope_type")
+  scopeId   String    @map("scope_id") @db.Uuid
+  validFrom DateTime  @default(now()) @map("valid_from") @db.Timestamptz
+  validTill DateTime? @map("valid_till") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user AppUser @relation(fields: [userId], references: [id])
+  role Role    @relation(fields: [roleId], references: [id])
+
+  @@map("user_assignments")
+  @@schema("pos")
+}
