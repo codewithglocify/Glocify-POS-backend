@@ -4,8 +4,8 @@ import { AuthenticationModule, type Duration } from '@nestjs/authentication';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
-import { OrganizationModule } from './organization/organization.module.js';
 import { AuthorizationModule } from './v1/authorization/authorization.module.js';
+import { OrganizationModule } from './v1/organization/organization.module.js';
 
 @Module({
   imports: [

@@ -33,6 +33,14 @@ $ npm install
 
 Swagger UI is available at `/docs` when the app is running (for example `http://localhost:3000/docs`).
 
+To export OpenAPI and a shareable Postman collection:
+
+```bash
+$ npm run export:postman
+```
+
+Import [`postman/Core-POS-API.postman_collection.json`](postman/Core-POS-API.postman_collection.json) into Postman (File → Import). OpenAPI JSON is written to `postman/openapi.json`.
+
 ## Compile and run the project
 
 ```bash

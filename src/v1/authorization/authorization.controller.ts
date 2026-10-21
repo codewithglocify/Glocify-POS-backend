@@ -10,10 +10,10 @@ import {
 } from '@nestjs/swagger';
 import type { AppUser } from '../../generated/prisma/client.js';
 import { AuthorizationService } from './authorization.service.js';
-import { AuthUserProfileDto } from './dto/auth-user-profile.dto.js';
+import { AuthMeResponseDto } from './dto/auth-me-response.dto.js';
+import { AuthSessionResponseDto } from './dto/auth-session-response.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
-import { TokenPairDto } from './dto/token-pair.dto.js';
 
 @ApiTags('Authorization')
 @ApiBearerAuth('bearer')
@@ -25,7 +25,7 @@ export class AuthorizationController {
   @Public()
   @Post('login')
   @ApiOperation({ summary: 'Sign in with organization, email, and PIN' })
-  @ApiOkResponse({ type: TokenPairDto })
+  @ApiOkResponse({ type: AuthSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   login(@Body() loginDto: LoginDto) {
     return this.authorizationService.login(loginDto);
@@ -34,7 +34,7 @@ export class AuthorizationController {
   @Public()
   @Post('refresh')
   @ApiOperation({ summary: 'Exchange a refresh token for a new token pair' })
-  @ApiOkResponse({ type: TokenPairDto })
+  @ApiOkResponse({ type: AuthSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   refresh(@Body() refreshDto: RefreshDto) {
     return this.authorizationService.refresh(refreshDto.refreshToken);
@@ -50,10 +50,10 @@ export class AuthorizationController {
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Return the authenticated user profile' })
-  @ApiOkResponse({ type: AuthUserProfileDto })
+  @ApiOperation({ summary: 'Return the authenticated user profile with roles and permissions' })
+  @ApiOkResponse({ type: AuthMeResponseDto })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   me(@CurrentUser() user: AppUser) {
-    return this.authorizationService.toProfile(user);
+    return this.authorizationService.me(user);
   }
 }

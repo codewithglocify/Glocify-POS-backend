@@ -7,5 +7,6 @@ import './authentication.types.js';
 @Module({
   controllers: [AuthorizationController],
   providers: [AuthorizationService, JwtAuth],
+  exports: [AuthorizationService],
 })
 export class AuthorizationModule {}

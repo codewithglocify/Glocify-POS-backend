@@ -13,6 +13,9 @@ describe('AuthorizationService', () => {
       findFirst: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
     };
+    userAssignment: {
+      findMany: ReturnType<typeof vi.fn>;
+    };
   };
   let passwordHasher: {
     verify: ReturnType<typeof vi.fn>;
@@ -39,11 +42,38 @@ describe('AuthorizationService', () => {
     updatedAt: new Date(),
   };
 
+  const authzAssignments = [
+    {
+      role: {
+        code: 'SUPER_ADMIN',
+        name: 'Super Admin',
+        rolePermissions: [{ permission: { code: 'pos.sale' } }, { permission: { code: 'org.manage' } }],
+      },
+    },
+    {
+      role: {
+        code: 'SUPER_ADMIN',
+        name: 'Super Admin',
+        rolePermissions: [{ permission: { code: 'pos.sale' } }],
+      },
+    },
+    {
+      role: {
+        code: 'CASHIER',
+        name: 'Cashier',
+        rolePermissions: [{ permission: { code: 'pos.sale' } }],
+      },
+    },
+  ];
+
   beforeEach(async () => {
     prisma = {
       appUser: {
         findFirst: vi.fn(),
         update: vi.fn(),
+      },
+      userAssignment: {
+        findMany: vi.fn().mockResolvedValue(authzAssignments),
       },
     };
     passwordHasher = {
@@ -58,7 +88,11 @@ describe('AuthorizationService', () => {
         expiresIn: 3600,
       }),
       refresh: vi.fn().mockResolvedValue({
-        accessToken: 'access-2',
+        accessToken: [
+          Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url'),
+          Buffer.from(JSON.stringify({ sub: 'user-1' })).toString('base64url'),
+          'sig',
+        ].join('.'),
         refreshToken: 'refresh-2',
         expiresIn: 3600,
       }),
@@ -81,7 +115,7 @@ describe('AuthorizationService', () => {
     expect(service).toBeDefined();
   });
 
-  it('issues tokens for valid credentials', async () => {
+  it('issues tokens with roles and permissions for valid credentials', async () => {
     prisma.appUser.findFirst.mockResolvedValue(activeUser);
     passwordHasher.verify.mockResolvedValue(true);
 
@@ -99,6 +133,11 @@ describe('AuthorizationService', () => {
       accessToken: 'access',
       refreshToken: 'refresh',
       expiresIn: 3600,
+      roles: [
+        { code: 'SUPER_ADMIN', name: 'Super Admin' },
+        { code: 'CASHIER', name: 'Cashier' },
+      ],
+      permissions: ['org.manage', 'pos.sale'],
     });
   });
 
@@ -116,6 +155,44 @@ describe('AuthorizationService', () => {
 
     expect(passwordHasher.verify).toHaveBeenCalledWith('wrong', undefined);
     expect(tokens.issue).not.toHaveBeenCalled();
+  });
+
+  it('refreshes tokens with roles and permissions', async () => {
+    const result = await service.refresh('refresh');
+
+    expect(tokens.refresh).toHaveBeenCalledWith('refresh');
+    expect(prisma.userAssignment.findMany).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      refreshToken: 'refresh-2',
+      expiresIn: 3600,
+      roles: [
+        { code: 'SUPER_ADMIN', name: 'Super Admin' },
+        { code: 'CASHIER', name: 'Cashier' },
+      ],
+      permissions: ['org.manage', 'pos.sale'],
+    });
+  });
+
+  it('returns profile with roles and permissions for me', async () => {
+    const result = await service.me(activeUser);
+
+    expect(result).not.toHaveProperty('pinHash');
+    expect(result.email).toBe('johndoe@mock.com');
+    expect(result.roles).toEqual([
+      { code: 'SUPER_ADMIN', name: 'Super Admin' },
+      { code: 'CASHIER', name: 'Cashier' },
+    ]);
+    expect(result.permissions).toEqual(['org.manage', 'pos.sale']);
+  });
+
+  it('dedupes roles and sorts unique permission codes', async () => {
+    const authz = await service.getAuthzForUser('user-1');
+
+    expect(authz.roles).toEqual([
+      { code: 'SUPER_ADMIN', name: 'Super Admin' },
+      { code: 'CASHIER', name: 'Cashier' },
+    ]);
+    expect(authz.permissions).toEqual(['org.manage', 'pos.sale']);
   });
 
   it('strips pinHash from the profile', () => {
