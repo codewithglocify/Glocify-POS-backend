@@ -11,7 +11,7 @@ const PERMISSIONS = [
   },
   {
     code: 'Store Manager',
-    description: '',
+    description: 'Manages store catalogues, pricing assignments, and stock cache for stores in scope.',
   },
   {
     code: 'District Manager',
@@ -19,7 +19,7 @@ const PERMISSIONS = [
   },
   {
     code: 'Country Manager',
-    description: '',
+    description: 'Manages which stores are added to a country and store master data for that country.',
   },
   {
     code: 'Finance',
@@ -46,5 +46,16 @@ const PERMISSIONS = [
 export default async function (prisma: PrismaClient) {
   await prisma.permission.createMany({
     data: PERMISSIONS,
+    skipDuplicates: true,
   });
+
+  for (const permission of PERMISSIONS) {
+    if (!permission.description) {
+      continue;
+    }
+    await prisma.permission.updateMany({
+      where: { code: permission.code },
+      data: { description: permission.description },
+    });
+  }
 }

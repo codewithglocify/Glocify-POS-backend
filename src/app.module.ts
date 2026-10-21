@@ -6,6 +6,8 @@ import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthorizationModule } from './v1/authorization/authorization.module.js';
 import { OrganizationModule } from './v1/organization/organization.module.js';
+import { StoreModule } from './v1/store/store.module.js';
+import { CatalogueModule } from './v1/catalogue/catalogue.module.js';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { OrganizationModule } from './v1/organization/organization.module.js';
     }),
     PrismaModule,
     OrganizationModule,
+    StoreModule,
+    CatalogueModule,
     AuthorizationModule,
   ],
   controllers: [AppController],

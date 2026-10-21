@@ -66,6 +66,35 @@ enum ScopeType {
   @@schema("pos")
 }
 
+enum StoreConcept {
+  FULL_PRICE
+  OUTLET
+  MULTI_BRAND
+  OTHER
+
+  @@map("store_concept")
+  @@schema("pos")
+}
+
+enum StoreStatus {
+  PLANNED
+  LIVE
+  SUSPENDED
+  CLOSED
+
+  @@map("store_status")
+  @@schema("pos")
+}
+
+enum PromotionStackPolicy {
+  BEST_DEAL
+  STACK
+  EXCLUSIVE
+
+  @@map("promotion_stack_policy")
+  @@schema("pos")
+}
+
 model Currency {
   code                  String    @id @db.Char(3)
   numericCode           String    @map("numeric_code") @db.Char(3)
@@ -74,17 +103,21 @@ model Currency {
   name                  String
   isActive              Boolean   @default(true) @map("is_active")
   countries             Country[]
+  stores                Store[]
+  priceLists            PriceList[]
 
   @@map("currencies")
   @@schema("pos")
 }
 
 model Language {
-  code      String    @id
-  name      String
-  isRtl     Boolean   @default(false) @map("is_rtl")
-  isActive  Boolean   @default(true) @map("is_active")
-  countries Country[]
+  code         String               @id
+  name         String
+  isRtl        Boolean              @default(false) @map("is_rtl")
+  isActive     Boolean              @default(true) @map("is_active")
+  countries    Country[]
+  stores       Store[]
+  translations ProductTranslation[]
 
   @@map("languages")
   @@schema("pos")
@@ -121,6 +154,8 @@ model Country {
   defaultLanguage               Language              @relation(fields: [defaultLanguageCode], references: [code])
   organizationCountries         OrganizationCountry[]
   organizationCountriesInRegion OrganizationCountry[] @relation("CountryInRegion")
+  stores                        Store[]
+  priceLists                    PriceList[]
 
   @@unique([id, regionId])
   @@map("countries")
@@ -141,6 +176,13 @@ model Organization {
   organizationCountries OrganizationCountry[]
   roles                 Role[]
   appUsers              AppUser[]
+  stores                Store[]
+  categories            Category[]
+  products              Product[]
+  barcodes              Barcode[]
+  priceLists            PriceList[]
+  promotions            Promotion[]
+  coupons               Coupon[]
 
   @@map("organizations")
   @@schema("pos")
@@ -157,9 +199,261 @@ model Brand {
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
   updatedBy      String       @map("updated_by")
   organization   Organization @relation(fields: [organizationId], references: [id])
+  stores         Store[]
+  priceLists     PriceList[]
 
   @@unique([organizationId, code])
   @@map("brands")
+  @@schema("pos")
+}
+
+model Store {
+  id                   String       @id @default(uuid()) @db.Uuid
+  organizationId       String       @map("organization_id") @db.Uuid
+  brandId              String       @map("brand_id") @db.Uuid
+  countryId            String       @map("country_id") @db.Uuid
+  code                 String
+  name                 String
+  concept              StoreConcept @default(FULL_PRICE)
+  timezone             String
+  currencyCode         String       @map("currency_code") @db.Char(3)
+  languageCode         String       @map("language_code")
+  taxJurisdictionCode  String?      @map("tax_jurisdiction_code")
+  addressLine1         String?      @map("address_line1")
+  city                 String?
+  postalCode           String?      @map("postal_code")
+  latitude             Decimal?     @db.Decimal(9, 6)
+  longitude            Decimal?     @db.Decimal(9, 6)
+  status               StoreStatus  @default(PLANNED)
+  externalSapSite      String?      @map("external_sap_site")
+  externalFluentLocation String?    @map("external_fluent_location")
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  createdBy            String       @map("created_by")
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  updatedBy            String       @map("updated_by")
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  brand           Brand            @relation(fields: [brandId], references: [id])
+  country         Country          @relation(fields: [countryId], references: [id])
+  currency        Currency         @relation(fields: [currencyCode], references: [code])
+  language        Language         @relation(fields: [languageCode], references: [code])
+  storePriceLists StorePriceList[]
+  stockPositions  StockPosition[]
+
+  @@unique([organizationId, code])
+  @@index([countryId])
+  @@index([brandId])
+  @@map("stores")
+  @@schema("pos")
+}
+
+model Category {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  code           String
+  parentId       String? @map("parent_id") @db.Uuid
+  name           String
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  parent           Category?         @relation("CategoryTree", fields: [parentId], references: [id])
+  children         Category[]        @relation("CategoryTree")
+  productCategories ProductCategory[]
+
+  @@unique([organizationId, code])
+  @@map("categories")
+  @@schema("pos")
+}
+
+model Product {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  sapArticle      String       @map("sap_article")
+  styleNumber     String?      @map("style_number")
+  name            String
+  taxClassCode    String       @map("tax_class_code")
+  status          ActiveStatus @default(ACTIVE)
+  sourceUpdatedAt DateTime?    @map("source_updated_at") @db.Timestamptz
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  variants     ProductVariant[]
+
+  @@unique([organizationId, sapArticle])
+  @@index([name])
+  @@map("products")
+  @@schema("pos")
+}
+
+model ProductVariant {
+  id         String       @id @default(uuid()) @db.Uuid
+  productId  String       @map("product_id") @db.Uuid
+  sku        String       @unique
+  color      String?
+  size       String?
+  attributes Json         @default("{}")
+  status     ActiveStatus @default(ACTIVE)
+
+  product            Product              @relation(fields: [productId], references: [id])
+  barcodes           Barcode[]
+  translations       ProductTranslation[]
+  productCategories  ProductCategory[]
+  priceListItems     PriceListItem[]
+
+  @@index([productId])
+  @@index([sku])
+  @@map("product_variants")
+  @@schema("pos")
+}
+
+model Barcode {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  variantId      String  @map("variant_id") @db.Uuid
+  symbology      String
+  value          String
+  isPrimary      Boolean @default(false) @map("is_primary")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@unique([organizationId, value])
+  @@map("barcodes")
+  @@schema("pos")
+}
+
+model ProductTranslation {
+  variantId     String  @map("variant_id") @db.Uuid
+  languageCode  String  @map("language_code")
+  name          String
+  description   String? @db.Text
+
+  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  language Language       @relation(fields: [languageCode], references: [code])
+
+  @@id([variantId, languageCode])
+  @@index([name])
+  @@map("product_translations")
+  @@schema("pos")
+}
+
+model ProductCategory {
+  variantId  String @map("variant_id") @db.Uuid
+  categoryId String @map("category_id") @db.Uuid
+
+  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  category Category       @relation(fields: [categoryId], references: [id])
+
+  @@id([variantId, categoryId])
+  @@map("product_categories")
+  @@schema("pos")
+}
+
+model PriceList {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  code           String
+  currencyCode   String  @map("currency_code") @db.Char(3)
+  brandId        String? @map("brand_id") @db.Uuid
+  countryId      String? @map("country_id") @db.Uuid
+  concept        String?
+  sourceSystem   String  @map("source_system")
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  currency        Currency         @relation(fields: [currencyCode], references: [code])
+  brand           Brand?           @relation(fields: [brandId], references: [id])
+  country         Country?         @relation(fields: [countryId], references: [id])
+  items           PriceListItem[]
+  storePriceLists StorePriceList[]
+
+  @@unique([organizationId, code])
+  @@map("price_lists")
+  @@schema("pos")
+}
+
+model PriceListItem {
+  id              String    @id @default(uuid()) @db.Uuid
+  priceListId     String    @map("price_list_id") @db.Uuid
+  variantId       String    @map("variant_id") @db.Uuid
+  unitPrice       Decimal   @map("unit_price") @db.Decimal(19, 4)
+  compareAtPrice  Decimal?  @map("compare_at_price") @db.Decimal(19, 4)
+  effectiveFrom   DateTime  @map("effective_from") @db.Timestamptz
+  effectiveTo     DateTime? @map("effective_to") @db.Timestamptz
+  sourceDocument  String?   @map("source_document")
+
+  priceList PriceList      @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([priceListId, variantId, effectiveFrom(sort: Desc)])
+  @@map("price_list_items")
+  @@schema("pos")
+}
+
+model StorePriceList {
+  storeId     String @map("store_id") @db.Uuid
+  priceListId String @map("price_list_id") @db.Uuid
+  priority    Int    @default(100)
+
+  store     Store     @relation(fields: [storeId], references: [id])
+  priceList PriceList @relation(fields: [priceListId], references: [id])
+
+  @@id([storeId, priceListId])
+  @@map("store_price_lists")
+  @@schema("pos")
+}
+
+model Promotion {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  sourceSystem   String                @map("source_system")
+  ruleJson       Json                  @map("rule_json")
+  stackPolicy    PromotionStackPolicy  @default(BEST_DEAL) @map("stack_policy")
+  effectiveFrom  DateTime              @map("effective_from") @db.Timestamptz
+  effectiveTo    DateTime?             @map("effective_to") @db.Timestamptz
+  status         ActiveStatus          @default(ACTIVE)
+  coupons        Coupon[]
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, code])
+  @@map("promotions")
+  @@schema("pos")
+}
+
+model Coupon {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  code            String
+  promotionId     String?   @map("promotion_id") @db.Uuid
+  maxRedemptions  Int?      @map("max_redemptions")
+  redeemedCount   Int       @default(0) @map("redeemed_count")
+  validFrom       DateTime? @map("valid_from") @db.Timestamptz
+  validTo         DateTime? @map("valid_to") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  promotion    Promotion?   @relation(fields: [promotionId], references: [id])
+
+  @@unique([organizationId, code])
+  @@map("coupons")
+  @@schema("pos")
+}
+
+model StockPosition {
+  storeId         String   @map("store_id") @db.Uuid
+  sku             String
+  onHand          Decimal? @map("on_hand") @db.Decimal(12, 3)
+  availableToSell Decimal? @map("available_to_sell") @db.Decimal(12, 3)
+  reserved        Decimal? @db.Decimal(12, 3)
+  sourceSystem    String   @map("source_system")
+  asOf            DateTime @map("as_of") @db.Timestamptz
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@id([storeId, sku])
+  @@index([sku])
+  @@map("stock_positions")
   @@schema("pos")
 }
 
