@@ -54,6 +54,34 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+### Ngrok (local development)
+
+When `NODE_ENV=development` and `NGROK_AUTHTOKEN` is set, the app automatically opens an [ngrok](https://ngrok.com) tunnel to `http://localhost:${PORT:-3000}` on startup (alongside the Nest server). The public URL is printed as `Application forwarded at: …`.
+
+Configure in `.env` (see [`.env.example`](.env.example)):
+
+| Variable | Required | Description |
+|---|---|---|
+| `NGROK_AUTHTOKEN` | Yes (to enable) | Ngrok auth token; read via `authtoken_from_env` |
+| `NGROK_FORWARD_DOMAIN` | No | Reserved/custom domain to bind (omit for a random ngrok URL) |
+
+Ngrok is skipped when any of these are true:
+
+- `NODE_ENV` is not `development`
+- `NGROK_AUTHTOKEN` is unset
+- the process is started with `--noNgrok`
+
+With the Nest npm scripts, forward the flag past both npm and the Nest CLI:
+
+```bash
+$ npm run start -- -- --noNgrok
+$ npm run start:dev -- -- --noNgrok
+```
+
+For production-style runs of the built file: `node dist/main --noNgrok`.
+
+Tunnel failures are logged and do not stop the local server from listening.
+
 ## Run tests
 
 ```bash
