@@ -25,6 +25,8 @@ import {
 import type { AppUser } from '../../generated/prisma/client.js';
 import { AttachCountryDto } from './dto/attach-country.dto.js';
 import { AttachRegionDto } from './dto/attach-region.dto.js';
+import { BatchAttachCountriesDto } from './dto/batch-attach-countries.dto.js';
+import { BatchAttachRegionsDto } from './dto/batch-attach-regions.dto.js';
 import { CountryResponseDto } from './dto/country-response.dto.js';
 import { RegionResponseDto } from './dto/region-response.dto.js';
 import { OrganizationAdminService } from './organization-admin.service.js';
@@ -73,6 +75,17 @@ export class AdminGeographyController {
     return this.organizationAdminService.attachRegion(user.organizationId, dto);
   }
 
+  @Post('organizations/me/regions/batch')
+  @ApiOperation({
+    summary: 'Batch-attach regions to the caller organization',
+    description: 'Idempotent. Intended for HQ Admin / Country Manager workflows (seed-only permissions).',
+  })
+  @ApiOkResponse({ type: [RegionResponseDto] })
+  @ApiUnauthorizedResponse()
+  batchAttachRegions(@CurrentUser() user: AppUser, @Body() dto: BatchAttachRegionsDto) {
+    return this.organizationAdminService.ensureRegions(user.organizationId, dto.regionIds);
+  }
+
   @HttpCode(204)
   @Delete('organizations/me/regions/:regionId')
   @ApiOperation({ summary: 'Detach a region from the caller organization' })
@@ -100,6 +113,18 @@ export class AdminGeographyController {
   @ApiUnauthorizedResponse()
   attachCountry(@CurrentUser() user: AppUser, @Body() dto: AttachCountryDto) {
     return this.organizationAdminService.attachCountry(user.organizationId, dto);
+  }
+
+  @Post('organizations/me/countries/batch')
+  @ApiOperation({
+    summary: 'Batch-attach countries to the caller organization',
+    description:
+      'Idempotent. Auto-attaches each country’s parent region. Intended for HQ Admin / Country Manager (seed-only).',
+  })
+  @ApiOkResponse({ type: [CountryResponseDto] })
+  @ApiUnauthorizedResponse()
+  batchAttachCountries(@CurrentUser() user: AppUser, @Body() dto: BatchAttachCountriesDto) {
+    return this.organizationAdminService.ensureCountries(user.organizationId, dto.countryIds);
   }
 
   @HttpCode(204)

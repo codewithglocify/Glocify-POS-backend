@@ -6,7 +6,9 @@ import {
   Prisma,
   ScopeType,
   type AppUser,
+  type Country,
   type Organization,
+  type Region,
 } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import {
@@ -16,6 +18,7 @@ import {
 } from '../authorization/authorization.service.js';
 import type { CreateOrganizationDto } from './dto/create-organization.dto.js';
 import { SUPER_ADMIN_ROLE_CODE, SUPER_ADMIN_ROLE_NAME } from '../../constants/roles.constants.js';
+import { OrganizationAdminService } from './organization-admin.service.js';
 
 export type OrganizationOnboardResult = AuthzPayload & {
   organization: Pick<Organization, 'id' | 'code' | 'legalName' | 'status' | 'createdAt' | 'updatedAt'>;
@@ -23,6 +26,8 @@ export type OrganizationOnboardResult = AuthzPayload & {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  regions: Region[];
+  countries: Country[];
 };
 
 @Injectable()
@@ -32,6 +37,7 @@ export class OrganizationService {
     private readonly passwordHasher: PasswordHasher,
     private readonly tokens: TokenService,
     private readonly authorizationService: AuthorizationService,
+    private readonly organizationAdminService: OrganizationAdminService,
   ) {}
 
   async create(dto: CreateOrganizationDto): Promise<OrganizationOnboardResult> {
@@ -39,6 +45,8 @@ export class OrganizationService {
 
     let organization: Organization;
     let user: AppUser;
+    let regions: Region[] = [];
+    let countries: Country[] = [];
 
     try {
       const created = await this.prisma.$transaction(async (tx) => {
@@ -98,11 +106,33 @@ export class OrganizationService {
           },
         });
 
-        return { organization, user };
+        let attachedRegions: Region[] = [];
+        let attachedCountries: Country[] = [];
+
+        if (dto.regionIds?.length) {
+          attachedRegions = await this.organizationAdminService.ensureRegions(organization.id, dto.regionIds, tx);
+        }
+
+        if (dto.countryIds?.length) {
+          attachedCountries = await this.organizationAdminService.ensureCountries(organization.id, dto.countryIds, tx);
+          const countryRegionIds = new Set(attachedCountries.map((country) => country.regionId));
+          const extraRegions = await tx.region.findMany({
+            where: { id: { in: [...countryRegionIds] } },
+          });
+          const byId = new Map(attachedRegions.map((region) => [region.id, region]));
+          for (const region of extraRegions) {
+            byId.set(region.id, region);
+          }
+          attachedRegions = [...byId.values()];
+        }
+
+        return { organization, user, regions: attachedRegions, countries: attachedCountries };
       });
 
       organization = created.organization;
       user = created.user;
+      regions = created.regions;
+      countries = created.countries;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('Organization code already exists');
@@ -134,6 +164,8 @@ export class OrganizationService {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
+      regions,
+      countries,
       ...authz,
     };
   }

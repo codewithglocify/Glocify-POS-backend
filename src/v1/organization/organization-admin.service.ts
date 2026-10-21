@@ -1,11 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client.js';
-import type { AppUser, Brand } from '../../generated/prisma/client.js';
+import type { AppUser, Brand, Country, Region } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { AttachCountryDto } from './dto/attach-country.dto.js';
 import type { AttachRegionDto } from './dto/attach-region.dto.js';
 import type { CreateBrandDto } from './dto/create-brand.dto.js';
 import type { UpdateBrandDto } from './dto/update-brand.dto.js';
+
+type DbClient = Prisma.TransactionClient | PrismaService;
 
 @Injectable()
 export class OrganizationAdminService {
@@ -28,6 +30,67 @@ export class OrganizationAdminService {
       include: { region: true },
       orderBy: { region: { code: 'asc' } },
     });
+  }
+
+  /**
+   * Idempotently attach regions. Unknown IDs fail the whole request.
+   * Returns master Region rows for the requested IDs (deduped).
+   */
+  async ensureRegions(organizationId: string, regionIds: string[], db: DbClient = this.prisma): Promise<Region[]> {
+    const uniqueIds = [...new Set(regionIds)];
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const regions = await db.region.findMany({
+      where: { id: { in: uniqueIds } },
+    });
+    if (regions.length !== uniqueIds.length) {
+      const found = new Set(regions.map((region) => region.id));
+      const missing = uniqueIds.filter((id) => !found.has(id));
+      throw new BadRequestException(`Unknown region IDs: ${missing.join(', ')}`);
+    }
+
+    await db.organizationRegion.createMany({
+      data: uniqueIds.map((regionId) => ({ organizationId, regionId })),
+      skipDuplicates: true,
+    });
+
+    return regions;
+  }
+
+  /**
+   * Idempotently attach countries; auto-attaches each country's parent region.
+   * Returns master Country rows for the requested IDs (deduped).
+   */
+  async ensureCountries(organizationId: string, countryIds: string[], db: DbClient = this.prisma): Promise<Country[]> {
+    const uniqueIds = [...new Set(countryIds)];
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const countries = await db.country.findMany({
+      where: { id: { in: uniqueIds } },
+    });
+    if (countries.length !== uniqueIds.length) {
+      const found = new Set(countries.map((country) => country.id));
+      const missing = uniqueIds.filter((id) => !found.has(id));
+      throw new BadRequestException(`Unknown country IDs: ${missing.join(', ')}`);
+    }
+
+    const regionIds = [...new Set(countries.map((country) => country.regionId))];
+    await this.ensureRegions(organizationId, regionIds, db);
+
+    await db.organizationCountry.createMany({
+      data: countries.map((country) => ({
+        organizationId,
+        countryId: country.id,
+        regionId: country.regionId,
+      })),
+      skipDuplicates: true,
+    });
+
+    return countries;
   }
 
   async attachRegion(organizationId: string, dto: AttachRegionDto) {

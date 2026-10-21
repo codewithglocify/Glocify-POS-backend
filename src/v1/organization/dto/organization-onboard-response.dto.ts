@@ -3,6 +3,8 @@ import { ActiveStatus } from '../../../generated/prisma/client.js';
 import { AuthRoleDto } from '../../authorization/dto/auth-role.dto.js';
 import { AuthUserProfileDto } from '../../authorization/dto/auth-user-profile.dto.js';
 import { TokenPairDto } from '../../authorization/dto/token-pair.dto.js';
+import { CountryResponseDto } from './country-response.dto.js';
+import { RegionResponseDto } from './region-response.dto.js';
 
 export class OrganizationSummaryDto {
   @ApiProperty({ format: 'uuid' })
@@ -40,4 +42,10 @@ export class OrganizationOnboardResponseDto extends TokenPairDto {
     example: ['org.manage', 'pos.sale'],
   })
   permissions: string[];
+
+  @ApiProperty({ type: [RegionResponseDto], description: 'Regions attached during onboard (if any)' })
+  regions: RegionResponseDto[];
+
+  @ApiProperty({ type: [CountryResponseDto], description: 'Countries attached during onboard (if any)' })
+  countries: CountryResponseDto[];
 }

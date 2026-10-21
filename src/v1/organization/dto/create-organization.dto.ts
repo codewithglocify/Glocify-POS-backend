@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsStrongPassword } from 'class-validator';
+import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, IsStrongPassword, IsUUID } from 'class-validator';
 
 export class CreateOrganizationDto {
   @ApiProperty({ example: 'acme' })
@@ -32,4 +32,24 @@ export class CreateOrganizationDto {
   @IsStrongPassword()
   @IsNotEmpty()
   password: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Optional region IDs to attach during onboard',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  regionIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Optional country IDs to attach during onboard (auto-attaches parent regions)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  countryIds?: string[];
 }

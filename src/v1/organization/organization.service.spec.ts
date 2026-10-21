@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActiveStatus, AppUserStatus, Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuthorizationService } from '../authorization/authorization.service.js';
+import { OrganizationAdminService } from './organization-admin.service.js';
 import { OrganizationService } from './organization.service.js';
 import { SUPER_ADMIN_ROLE_CODE } from '../../constants/roles.constants.js';
 
@@ -22,6 +23,10 @@ describe('OrganizationService', () => {
   let passwordHasher: { hash: ReturnType<typeof vi.fn> };
   let tokens: { issue: ReturnType<typeof vi.fn> };
   let authorizationService: { getAuthzForUser: ReturnType<typeof vi.fn> };
+  let organizationAdminService: {
+    ensureRegions: ReturnType<typeof vi.fn>;
+    ensureCountries: ReturnType<typeof vi.fn>;
+  };
 
   const dto = {
     code: 'acme',
@@ -80,6 +85,10 @@ describe('OrganizationService', () => {
         permissions: ['org.manage'],
       }),
     };
+    organizationAdminService = {
+      ensureRegions: vi.fn().mockResolvedValue([]),
+      ensureCountries: vi.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -88,6 +97,7 @@ describe('OrganizationService', () => {
         { provide: PasswordHasher, useValue: passwordHasher },
         { provide: TokenService, useValue: tokens },
         { provide: AuthorizationService, useValue: authorizationService },
+        { provide: OrganizationAdminService, useValue: organizationAdminService },
       ],
     }).compile();
 
@@ -149,6 +159,35 @@ describe('OrganizationService', () => {
     expect(authorizationService.getAuthzForUser).toHaveBeenCalledWith('user-1');
     expect(result.roles).toEqual([{ code: SUPER_ADMIN_ROLE_CODE, name: 'Super Admin' }]);
     expect(result.permissions).toEqual(['org.manage']);
+    expect(result.regions).toEqual([]);
+    expect(result.countries).toEqual([]);
+    expect(organizationAdminService.ensureRegions).not.toHaveBeenCalled();
+    expect(organizationAdminService.ensureCountries).not.toHaveBeenCalled();
+  });
+
+  it('attaches countries (and their regions) when countryIds are provided', async () => {
+    const country = { id: 'country-1', regionId: 'region-1', isoCode: 'US' };
+    const region = { id: 'region-1', code: 'NAM' };
+    organizationAdminService.ensureCountries.mockResolvedValue([country]);
+
+    prisma.$transaction.mockImplementation(async (fn) => {
+      const tx = {
+        organization: { create: vi.fn().mockResolvedValue(organization) },
+        role: { create: vi.fn().mockResolvedValue({ id: 'role-1', code: SUPER_ADMIN_ROLE_CODE }) },
+        permission: { findMany: vi.fn().mockResolvedValue([]) },
+        rolePermission: { createMany: vi.fn() },
+        appUser: { create: vi.fn().mockResolvedValue(user) },
+        userAssignment: { create: vi.fn().mockResolvedValue({ id: 'assign-1' }) },
+        region: { findMany: vi.fn().mockResolvedValue([region]) },
+      };
+      return fn(tx);
+    });
+
+    const result = await service.create({ ...dto, countryIds: ['country-1'] });
+
+    expect(organizationAdminService.ensureCountries).toHaveBeenCalledWith('org-1', ['country-1'], expect.anything());
+    expect(result.countries).toEqual([country]);
+    expect(result.regions).toEqual([region]);
   });
 
   it('uses employeeNumber in externalSubject when provided', async () => {
