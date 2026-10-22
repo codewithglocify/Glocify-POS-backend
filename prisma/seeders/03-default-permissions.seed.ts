@@ -10,7 +10,7 @@ const PERMISSIONS = [
     description: '',
   },
   {
-    code: 'Store Manager',
+    code: 'Store Admin',
     description: 'Manages store catalogues, pricing assignments, and stock cache for stores in scope.',
   },
   {

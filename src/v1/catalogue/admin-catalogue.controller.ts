@@ -34,7 +34,7 @@ export class AdminCatalogueController {
   @Post('categories')
   @ApiOperation({
     summary: 'Create a category',
-    description: 'Intended for Store Manager workflows (seed-only permissions).',
+    description: 'Intended for Store Admin workflows (seed-only permissions).',
   })
   @ApiCreatedResponse()
   @ApiConflictResponse()
