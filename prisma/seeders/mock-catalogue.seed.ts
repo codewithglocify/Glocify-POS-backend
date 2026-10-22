@@ -14,6 +14,7 @@ export default async function (prisma: PrismaClient) {
   const existingStore = await prisma.store.findFirst({
     where: { organizationId: organization.id, code: 'US-DEMO-01' },
   });
+
   if (existingStore) {
     console.info('Demo catalogue already present; skipping.');
     return;
