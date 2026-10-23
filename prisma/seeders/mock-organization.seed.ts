@@ -9,11 +9,16 @@ import {
   type Organization,
   type Store,
 } from '../../dist/generated/prisma/client.js';
-import { COMPANY_ADMIN_ROLE_CODE, STORE_ADMIN_ROLE_CODE } from '../../src/constants/roles.constants.js';
-import { ensureOrganizationRoleTemplates } from '../../src/v1/authorization/org-roles.util.js';
+import {
+  COMPANY_ADMIN_ROLE_CODE,
+  STORE_ADMIN_ROLE_CODE,
+  STORE_USER_ROLE_CODE,
+} from '../../dist/constants/roles.constants.js';
+import { ensureOrganizationRoleTemplates } from '../../dist/v1/authorization/org-roles.util.js';
 
 const MOCK_ADMIN_EMAIL = 'johndoe@mock.com';
 const MOCK_STORE_ADMIN_EMAIL = 'store.admin@mock.com';
+const MOCK_STORE_USER_EMAIL = 'store.user@mock.com';
 const MOCK_PASSWORD = 'mock@123';
 const MOCK_PIN = '1234';
 
@@ -49,59 +54,6 @@ const MOCK_PRODUCTS = [
     unitPrice: '499.0000',
   },
 ] as const;
-
-export default async function (prisma: PrismaClient) {
-  const passwordHasher = new PasswordHasher();
-
-  const region = await prisma.region.findFirst({ where: { code: 'APAC' } });
-  const country = await prisma.country.findFirst({ where: { isoCode: 'IN' } });
-  if (!region || !country) {
-    throw new Error('APAC region and/or India (IN) country missing. Run default region/country seeders first.');
-  }
-
-  let organization = await prisma.organization.findFirst({
-    where: { createdBy: 'Mock Seeder' },
-  });
-  if (organization) {
-    console.info(`Mock organization already exists (code ${organization.code}).`);
-  } else {
-    const orgUuid = crypto.randomUUID();
-    organization = await prisma.organization.create({
-      data: {
-        legalName: `Mock Organization - ${orgUuid}`,
-        code: orgUuid,
-        createdBy: 'Mock Seeder',
-        updatedBy: 'Mock Seeder',
-      },
-    });
-    console.info(`Created mock organization (code ${organization.code}).`);
-  }
-
-  await ensureOrganizationRegion(prisma, organization.id, region.id);
-  await ensureOrganizationCountry(prisma, organization.id, country.id, country.regionId);
-
-  await ensureOrganizationRoleTemplates(prisma, organization.id);
-  console.info('Ensured COMPANY_ADMIN / STORE_ADMIN / STORE_USER role templates.');
-
-  const companyAdminRole = await prisma.role.findUniqueOrThrow({
-    where: {
-      organizationId_code: { organizationId: organization.id, code: COMPANY_ADMIN_ROLE_CODE },
-    },
-  });
-  await ensureMockAdminUser(prisma, organization, companyAdminRole.id, passwordHasher);
-
-  const brand = await ensureBrand(prisma, organization.id);
-
-  const store = await ensureStore(prisma, organization.id, brand.id, country);
-
-  await ensureCatalogue(prisma, organization.id, brand.id, country.id, store);
-
-  await ensureStoreAdmin(prisma, organization, store, passwordHasher);
-
-  console.info(
-    `Mock organization ready: ${organization.code}; store ${store.code}; admin ${MOCK_ADMIN_EMAIL}; store admin ${MOCK_STORE_ADMIN_EMAIL}.`,
-  );
-}
 
 async function ensureOrganizationRegion(prisma: PrismaClient, organizationId: string, regionId: string) {
   const existing = await prisma.organizationRegion.findUnique({
@@ -435,4 +387,117 @@ async function ensureStoreAdmin(
     });
     console.info(`Assigned store admin to store ${store.code}.`);
   }
+}
+
+async function ensureStoreUser(
+  prisma: PrismaClient,
+  organization: Organization,
+  store: Store,
+  passwordHasher: PasswordHasher,
+) {
+  const role = await prisma.role.findUniqueOrThrow({
+    where: {
+      organizationId_code: { organizationId: organization.id, code: STORE_USER_ROLE_CODE },
+    },
+  });
+
+  let user = await prisma.appUser.findFirst({
+    where: { organizationId: organization.id, email: MOCK_STORE_USER_EMAIL },
+  });
+  if (user) {
+    console.info(`Store user ${MOCK_STORE_USER_EMAIL} already exists.`);
+  } else {
+    user = await prisma.appUser.create({
+      data: {
+        displayName: 'Mock Store User',
+        externalSubject: 'Mock Store User',
+        email: MOCK_STORE_USER_EMAIL,
+        passwordHash: await passwordHasher.hash(MOCK_PASSWORD),
+        pinHash: await passwordHasher.hash(MOCK_PIN),
+        pinLength: MOCK_PIN.length,
+        pinSetAt: new Date(),
+        status: AppUserStatus.ACTIVE,
+        employeeNumber: 'MOCK0000003',
+        organizationId: organization.id,
+      },
+    });
+    console.info(`Created store user ${MOCK_STORE_USER_EMAIL}.`);
+  }
+
+  const assignment = await prisma.userAssignment.findFirst({
+    where: {
+      userId: user.id,
+      roleId: role.id,
+      scopeType: AssignmentScopeType.STORE,
+      scopeId: store.id,
+    },
+  });
+  if (assignment) {
+    console.info(`Store user STORE assignment to ${store.code} already exists.`);
+  } else {
+    await prisma.userAssignment.create({
+      data: {
+        userId: user.id,
+        roleId: role.id,
+        scopeType: AssignmentScopeType.STORE,
+        scopeId: store.id,
+        createdBy: 'Mock Seeder',
+      },
+    });
+    console.info(`Assigned store user to store ${store.code}.`);
+  }
+}
+
+export default async function (prisma: PrismaClient) {
+  const passwordHasher = new PasswordHasher();
+
+  const region = await prisma.region.findFirst({ where: { code: 'APAC' } });
+  const country = await prisma.country.findFirst({ where: { isoCode: 'IN' } });
+  if (!region || !country) {
+    throw new Error('APAC region and/or India (IN) country missing. Run default region/country seeders first.');
+  }
+
+  let organization = await prisma.organization.findFirst({
+    where: { createdBy: 'Mock Seeder' },
+  });
+  if (organization) {
+    console.info(`Mock organization already exists (code ${organization.code}).`);
+  } else {
+    const orgUuid = crypto.randomUUID();
+    organization = await prisma.organization.create({
+      data: {
+        legalName: `Mock Organization - ${orgUuid}`,
+        code: orgUuid,
+        createdBy: 'Mock Seeder',
+        updatedBy: 'Mock Seeder',
+      },
+    });
+    console.info(`Created mock organization (code ${organization.code}).`);
+  }
+
+  await ensureOrganizationRegion(prisma, organization.id, region.id);
+  await ensureOrganizationCountry(prisma, organization.id, country.id, country.regionId);
+
+  await ensureOrganizationRoleTemplates(prisma, organization.id);
+  console.info('Ensured COMPANY_ADMIN / STORE_ADMIN / STORE_USER role templates.');
+
+  const companyAdminRole = await prisma.role.findUniqueOrThrow({
+    where: {
+      organizationId_code: { organizationId: organization.id, code: COMPANY_ADMIN_ROLE_CODE },
+    },
+  });
+  await ensureMockAdminUser(prisma, organization, companyAdminRole.id, passwordHasher);
+
+  const brand = await ensureBrand(prisma, organization.id);
+
+  const store = await ensureStore(prisma, organization.id, brand.id, country);
+
+  await ensureCatalogue(prisma, organization.id, brand.id, country.id, store);
+
+  await ensureStoreAdmin(prisma, organization, store, passwordHasher);
+  await ensureStoreUser(prisma, organization, store, passwordHasher);
+
+  console.info(
+    `Mock organization ready: ${organization.code}; store ${store.code}; admin ${MOCK_ADMIN_EMAIL}; store admin ${MOCK_STORE_ADMIN_EMAIL}; store user ${MOCK_STORE_USER_EMAIL}.`,
+  );
 }
