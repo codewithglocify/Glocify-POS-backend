@@ -104,6 +104,85 @@ export class CatalogueAdminService {
     }
   }
 
+  async listPriceLists(organizationId: string) {
+    const rows = await this.prisma.priceList.findMany({
+      where: { organizationId },
+      include: {
+        country: {
+          select: { id: true, isoCode: true, name: true, regionId: true },
+        },
+        brand: { select: { id: true, code: true, name: true } },
+        storePriceLists: { select: { storeId: true, priority: true } },
+      },
+      orderBy: { code: 'asc' },
+    });
+
+    return rows.map((row) => ({
+      ...row,
+      currencyCode: row.currencyCode.trim(),
+      country: row.country
+        ? { ...row.country, isoCode: row.country.isoCode.trim() }
+        : null,
+    }));
+  }
+
+  async listPriceListItems(organizationId: string) {
+    const rows = await this.prisma.priceListItem.findMany({
+      where: { priceList: { organizationId } },
+      include: {
+        priceList: {
+          select: {
+            id: true,
+            code: true,
+            currencyCode: true,
+            concept: true,
+            brandId: true,
+            countryId: true,
+            country: {
+              select: {
+                id: true,
+                isoCode: true,
+                name: true,
+                regionId: true,
+                priceTaxMode: true,
+              },
+            },
+            brand: { select: { id: true, code: true, name: true } },
+          },
+        },
+        variant: {
+          select: {
+            id: true,
+            sku: true,
+            product: { select: { id: true, sapArticle: true, name: true } },
+          },
+        },
+      },
+      orderBy: { effectiveFrom: 'asc' },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      priceListId: row.priceListId,
+      variantId: row.variantId,
+      unitPrice: row.unitPrice.toFixed(4),
+      compareAtPrice: row.compareAtPrice ? row.compareAtPrice.toFixed(4) : null,
+      effectiveFrom: row.effectiveFrom.toISOString(),
+      effectiveTo: row.effectiveTo ? row.effectiveTo.toISOString() : null,
+      priceList: {
+        ...row.priceList,
+        currencyCode: row.priceList.currencyCode.trim(),
+        country: row.priceList.country
+          ? {
+              ...row.priceList.country,
+              isoCode: row.priceList.country.isoCode.trim(),
+            }
+          : null,
+      },
+      variant: row.variant,
+    }));
+  }
+
   async createPriceList(
     organizationId: string,
     data: {

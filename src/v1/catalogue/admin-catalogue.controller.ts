@@ -77,6 +77,14 @@ export class AdminCatalogueController {
     return this.catalogueAdminService.addBarcode(user.organizationId, dto);
   }
 
+  @Get('price-lists')
+  @ApiOperation({ summary: 'List price lists for the caller organization' })
+  @ApiOkResponse()
+  @ApiUnauthorizedResponse()
+  listPriceLists(@CurrentUser() user: AppUser) {
+    return this.catalogueAdminService.listPriceLists(user.organizationId);
+  }
+
   @Post('price-lists')
   @ApiOperation({ summary: 'Create a price list' })
   @ApiCreatedResponse()
@@ -84,6 +92,14 @@ export class AdminCatalogueController {
   @ApiUnauthorizedResponse()
   createPriceList(@CurrentUser() user: AppUser, @Body() dto: CreatePriceListDto) {
     return this.catalogueAdminService.createPriceList(user.organizationId, dto);
+  }
+
+  @Get('price-list-items')
+  @ApiOperation({ summary: 'List effective-dated prices for the caller organization' })
+  @ApiOkResponse()
+  @ApiUnauthorizedResponse()
+  listPriceListItems(@CurrentUser() user: AppUser) {
+    return this.catalogueAdminService.listPriceListItems(user.organizationId);
   }
 
   @Post('price-list-items')
