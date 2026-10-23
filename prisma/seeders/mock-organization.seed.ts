@@ -2,20 +2,20 @@ import { PasswordHasher } from '@nestjs/authentication';
 import {
   ActiveStatus,
   AppUserStatus,
+  AssignmentScopeType,
   PrismaClient,
-  ScopeType,
   StoreConcept,
   StoreStatus,
   type Organization,
   type Store,
 } from '../../dist/generated/prisma/client.js';
-import { SUPER_ADMIN_ROLE_CODE, SUPER_ADMIN_ROLE_NAME } from '../../dist/constants/roles.constants.js';
+import { COMPANY_ADMIN_ROLE_CODE, STORE_ADMIN_ROLE_CODE } from '../../src/constants/roles.constants.js';
+import { ensureOrganizationRoleTemplates } from '../../src/v1/authorization/org-roles.util.js';
 
 const MOCK_ADMIN_EMAIL = 'johndoe@mock.com';
 const MOCK_STORE_ADMIN_EMAIL = 'store.admin@mock.com';
-const STORE_ADMIN_ROLE_CODE = 'STORE_ADMIN';
-const STORE_ADMIN_ROLE_NAME = 'Store Admin';
-const STORE_ADMIN_PERMISSION_CODE = 'Store Admin';
+const MOCK_PASSWORD = 'mock@123';
+const MOCK_PIN = '1234';
 
 const MOCK_PRODUCTS = [
   {
@@ -80,8 +80,15 @@ export default async function (prisma: PrismaClient) {
   await ensureOrganizationRegion(prisma, organization.id, region.id);
   await ensureOrganizationCountry(prisma, organization.id, country.id, country.regionId);
 
-  const superAdminRole = await ensureSuperAdminRole(prisma, organization.id);
-  await ensureMockAdminUser(prisma, organization, superAdminRole.id, passwordHasher);
+  await ensureOrganizationRoleTemplates(prisma, organization.id);
+  console.info('Ensured COMPANY_ADMIN / STORE_ADMIN / STORE_USER role templates.');
+
+  const companyAdminRole = await prisma.role.findUniqueOrThrow({
+    where: {
+      organizationId_code: { organizationId: organization.id, code: COMPANY_ADMIN_ROLE_CODE },
+    },
+  });
+  await ensureMockAdminUser(prisma, organization, companyAdminRole.id, passwordHasher);
 
   const brand = await ensureBrand(prisma, organization.id);
 
@@ -129,49 +136,6 @@ async function ensureOrganizationCountry(
   console.info('Attached organization country IN.');
 }
 
-async function ensureSuperAdminRole(prisma: PrismaClient, organizationId: string) {
-  let role = await prisma.role.findUnique({
-    where: { organizationId_code: { organizationId, code: SUPER_ADMIN_ROLE_CODE } },
-  });
-  if (role) {
-    console.info(`Role ${SUPER_ADMIN_ROLE_CODE} already exists.`);
-  } else {
-    role = await prisma.role.create({
-      data: {
-        organizationId,
-        code: SUPER_ADMIN_ROLE_CODE,
-        name: SUPER_ADMIN_ROLE_NAME,
-        description: 'Full access for the organization owner',
-      },
-    });
-    console.info(`Created role ${SUPER_ADMIN_ROLE_CODE}.`);
-  }
-
-  const permissions = await prisma.permission.findMany({ select: { id: true } });
-  if (permissions.length === 0) {
-    console.warn('No permissions found; run default permission seeder. SUPER_ADMIN has no permissions attached.');
-    return role;
-  }
-
-  const existingLinks = await prisma.rolePermission.findMany({
-    where: { roleId: role.id },
-    select: { permissionId: true },
-  });
-  const linked = new Set(existingLinks.map((row) => row.permissionId));
-  const missing = permissions.filter((permission) => !linked.has(permission.id));
-  if (missing.length === 0) {
-    console.info(`Role ${SUPER_ADMIN_ROLE_CODE} already has all permissions.`);
-  } else {
-    await prisma.rolePermission.createMany({
-      data: missing.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
-      skipDuplicates: true,
-    });
-    console.info(`Attached ${missing.length} permission(s) to ${SUPER_ADMIN_ROLE_CODE}.`);
-  }
-
-  return role;
-}
-
 async function ensureMockAdminUser(
   prisma: PrismaClient,
   organization: Organization,
@@ -182,43 +146,43 @@ async function ensureMockAdminUser(
     where: { organizationId: organization.id, email: MOCK_ADMIN_EMAIL },
   });
   if (user) {
-    console.info(`Super admin ${MOCK_ADMIN_EMAIL} already exists.`);
+    console.info(`Company admin ${MOCK_ADMIN_EMAIL} already exists.`);
   } else {
     user = await prisma.appUser.create({
       data: {
         displayName: 'Mock Admin',
         externalSubject: 'Mock Seeder',
         email: MOCK_ADMIN_EMAIL,
-        pinHash: await passwordHasher.hash('mock@123'),
-        pinSetAt: new Date(),
+        passwordHash: await passwordHasher.hash(MOCK_PASSWORD),
         status: AppUserStatus.ACTIVE,
         employeeNumber: 'MOCK0000001',
         organizationId: organization.id,
       },
     });
-    console.info(`Created super admin ${MOCK_ADMIN_EMAIL}.`);
+    console.info(`Created company admin ${MOCK_ADMIN_EMAIL}.`);
   }
 
   const assignment = await prisma.userAssignment.findFirst({
     where: {
       userId: user.id,
       roleId,
-      scopeType: ScopeType.ORGANIZATION,
+      scopeType: AssignmentScopeType.ORGANIZATION,
       scopeId: organization.id,
     },
   });
   if (assignment) {
-    console.info('Super admin ORGANIZATION assignment already exists.');
+    console.info('Company admin ORGANIZATION assignment already exists.');
   } else {
     await prisma.userAssignment.create({
       data: {
         userId: user.id,
         roleId,
-        scopeType: ScopeType.ORGANIZATION,
+        scopeType: AssignmentScopeType.ORGANIZATION,
         scopeId: organization.id,
+        createdBy: 'Mock Seeder',
       },
     });
-    console.info('Created super admin ORGANIZATION assignment.');
+    console.info('Created company admin ORGANIZATION assignment.');
   }
 }
 
@@ -420,41 +384,11 @@ async function ensureStoreAdmin(
   store: Store,
   passwordHasher: PasswordHasher,
 ) {
-  const permission = await prisma.permission.findFirst({
-    where: { code: STORE_ADMIN_PERMISSION_CODE },
+  const role = await prisma.role.findUniqueOrThrow({
+    where: {
+      organizationId_code: { organizationId: organization.id, code: STORE_ADMIN_ROLE_CODE },
+    },
   });
-  if (!permission) {
-    throw new Error(`Permission "${STORE_ADMIN_PERMISSION_CODE}" missing. Run default permission seeders first.`);
-  }
-
-  let role = await prisma.role.findUnique({
-    where: { organizationId_code: { organizationId: organization.id, code: STORE_ADMIN_ROLE_CODE } },
-  });
-  if (role) {
-    console.info(`Role ${STORE_ADMIN_ROLE_CODE} already exists.`);
-  } else {
-    role = await prisma.role.create({
-      data: {
-        organizationId: organization.id,
-        code: STORE_ADMIN_ROLE_CODE,
-        name: STORE_ADMIN_ROLE_NAME,
-        description: 'Store-scoped admin for a single location',
-      },
-    });
-    console.info(`Created role ${STORE_ADMIN_ROLE_CODE}.`);
-  }
-
-  const rolePermission = await prisma.rolePermission.findUnique({
-    where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
-  });
-  if (rolePermission) {
-    console.info(`Role ${STORE_ADMIN_ROLE_CODE} already has permission ${STORE_ADMIN_PERMISSION_CODE}.`);
-  } else {
-    await prisma.rolePermission.create({
-      data: { roleId: role.id, permissionId: permission.id },
-    });
-    console.info(`Attached permission ${STORE_ADMIN_PERMISSION_CODE} to ${STORE_ADMIN_ROLE_CODE}.`);
-  }
 
   let user = await prisma.appUser.findFirst({
     where: { organizationId: organization.id, email: MOCK_STORE_ADMIN_EMAIL },
@@ -467,7 +401,9 @@ async function ensureStoreAdmin(
         displayName: 'Mock Store Admin',
         externalSubject: 'Mock Store Admin',
         email: MOCK_STORE_ADMIN_EMAIL,
-        pinHash: await passwordHasher.hash('mock@123'),
+        passwordHash: await passwordHasher.hash(MOCK_PASSWORD),
+        pinHash: await passwordHasher.hash(MOCK_PIN),
+        pinLength: MOCK_PIN.length,
         pinSetAt: new Date(),
         status: AppUserStatus.ACTIVE,
         employeeNumber: 'MOCK0000002',
@@ -481,7 +417,7 @@ async function ensureStoreAdmin(
     where: {
       userId: user.id,
       roleId: role.id,
-      scopeType: ScopeType.STORE,
+      scopeType: AssignmentScopeType.STORE,
       scopeId: store.id,
     },
   });
@@ -492,8 +428,9 @@ async function ensureStoreAdmin(
       data: {
         userId: user.id,
         roleId: role.id,
-        scopeType: ScopeType.STORE,
+        scopeType: AssignmentScopeType.STORE,
         scopeId: store.id,
+        createdBy: 'Mock Seeder',
       },
     });
     console.info(`Assigned store admin to store ${store.code}.`);

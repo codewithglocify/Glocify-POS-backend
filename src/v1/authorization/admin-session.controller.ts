@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, UsePipes, ValidationPipe } from 
 import { CurrentUser, Public } from '@nestjs/authentication';
 import {
   ApiBearerAuth,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
@@ -10,49 +11,50 @@ import {
 } from '@nestjs/swagger';
 import type { AppUser } from '../../generated/prisma/client.js';
 import { AuthorizationService } from './authorization.service.js';
+import { AdminPasswordLoginDto } from './dto/admin-password-login.dto.js';
 import { AuthMeResponseDto } from './dto/auth-me-response.dto.js';
 import { AuthSessionResponseDto } from './dto/auth-session-response.dto.js';
-import { LoginDto } from './dto/login.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
 
-@ApiTags('Authorization')
+@ApiTags('Admin Session')
 @ApiBearerAuth('bearer')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@Controller('v1/authorization')
-export class AuthorizationController {
+@Controller('admin/v1/session')
+export class AdminSessionController {
   constructor(private readonly authorizationService: AuthorizationService) {}
 
   @Public()
   @Post('login')
-  @ApiOperation({ summary: 'Sign in with organization, email, and PIN' })
+  @ApiOperation({ summary: 'Admin console login with email and password (Company Admin)' })
   @ApiOkResponse({ type: AuthSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
-  login(@Body() loginDto: LoginDto) {
-    return this.authorizationService.login(loginDto);
+  @ApiForbiddenResponse({ description: 'Not Company Admin' })
+  login(@Body() dto: AdminPasswordLoginDto) {
+    return this.authorizationService.adminLogin(dto);
   }
 
   @Public()
   @Post('refresh')
   @ApiOperation({ summary: 'Exchange a refresh token for a new token pair' })
   @ApiOkResponse({ type: AuthSessionResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
-  refresh(@Body() refreshDto: RefreshDto) {
-    return this.authorizationService.refresh(refreshDto.refreshToken);
+  @ApiUnauthorizedResponse()
+  refresh(@Body() dto: RefreshDto) {
+    return this.authorizationService.refresh(dto.refreshToken);
   }
 
   @HttpCode(204)
   @Post('logout')
-  @ApiOperation({ summary: 'Revoke a refresh token' })
-  @ApiNoContentResponse({ description: 'Refresh token revoked (or already invalid)' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
-  async logout(@Body() refreshDto: RefreshDto): Promise<void> {
-    await this.authorizationService.logout(refreshDto.refreshToken);
+  @ApiOperation({ summary: 'Revoke the admin session refresh token' })
+  @ApiNoContentResponse()
+  @ApiUnauthorizedResponse()
+  async logout(@Body() dto: RefreshDto): Promise<void> {
+    await this.authorizationService.logout(dto.refreshToken);
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Return the authenticated user profile with roles and permissions' })
+  @ApiOperation({ summary: 'Authenticated profile with roles and permissions' })
   @ApiOkResponse({ type: AuthMeResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  @ApiUnauthorizedResponse()
   me(@CurrentUser() user: AppUser) {
     return this.authorizationService.me(user);
   }

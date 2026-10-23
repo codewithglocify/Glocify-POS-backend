@@ -3,8 +3,8 @@ import { PasswordHasher, TokenService } from '@nestjs/authentication';
 import {
   ActiveStatus,
   AppUserStatus,
+  AssignmentScopeType,
   Prisma,
-  ScopeType,
   type AppUser,
   type Country,
   type Organization,
@@ -16,8 +16,9 @@ import {
   type AuthUserProfile,
   type AuthzPayload,
 } from '../authorization/authorization.service.js';
+import { ensureOrganizationRoleTemplates } from '../authorization/org-roles.util.js';
 import type { CreateOrganizationDto } from './dto/create-organization.dto.js';
-import { SUPER_ADMIN_ROLE_CODE, SUPER_ADMIN_ROLE_NAME } from '../../constants/roles.constants.js';
+import { COMPANY_ADMIN_ROLE_CODE } from '../../constants/roles.constants.js';
 import { OrganizationAdminService } from './organization-admin.service.js';
 
 export type OrganizationOnboardResult = AuthzPayload & {
@@ -41,7 +42,7 @@ export class OrganizationService {
   ) {}
 
   async create(dto: CreateOrganizationDto): Promise<OrganizationOnboardResult> {
-    const pinHash = await this.passwordHasher.hash(dto.password);
+    const passwordHash = await this.passwordHasher.hash(dto.password);
 
     let organization: Organization;
     let user: AppUser;
@@ -60,27 +61,16 @@ export class OrganizationService {
           },
         });
 
-        const role = await tx.role.create({
-          data: {
-            organizationId: organization.id,
-            code: SUPER_ADMIN_ROLE_CODE,
-            name: SUPER_ADMIN_ROLE_NAME,
-            description: 'Full access for the organization owner',
+        await ensureOrganizationRoleTemplates(tx, organization.id);
+
+        const role = await tx.role.findUniqueOrThrow({
+          where: {
+            organizationId_code: {
+              organizationId: organization.id,
+              code: COMPANY_ADMIN_ROLE_CODE,
+            },
           },
         });
-
-        const permissions = await tx.permission.findMany({
-          select: { id: true },
-        });
-
-        if (permissions.length > 0) {
-          await tx.rolePermission.createMany({
-            data: permissions.map((permission) => ({
-              roleId: role.id,
-              permissionId: permission.id,
-            })),
-          });
-        }
 
         const externalSubject = `${organization.id}:${dto.employeeNumber ?? crypto.randomUUID()}`;
 
@@ -91,8 +81,7 @@ export class OrganizationService {
             displayName: dto.username,
             externalSubject,
             employeeNumber: dto.employeeNumber,
-            pinHash,
-            pinSetAt: new Date(),
+            passwordHash,
             status: AppUserStatus.ACTIVE,
           },
         });
@@ -101,8 +90,9 @@ export class OrganizationService {
           data: {
             userId: user.id,
             roleId: role.id,
-            scopeType: ScopeType.ORGANIZATION,
+            scopeType: AssignmentScopeType.ORGANIZATION,
             scopeId: organization.id,
+            createdBy: dto.username,
           },
         });
 
@@ -160,7 +150,7 @@ export class OrganizationService {
         createdAt: organization.createdAt,
         updatedAt: organization.updatedAt,
       },
-      user: this.toProfile(user),
+      user: this.authorizationService.toProfile(user),
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
@@ -168,10 +158,5 @@ export class OrganizationService {
       countries,
       ...authz,
     };
-  }
-
-  private toProfile(user: AppUser): AuthUserProfile {
-    const { pinHash: _pinHash, ...profile } = user;
-    return profile;
   }
 }

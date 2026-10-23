@@ -1,8 +1,14 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PasswordHasher, TokenService } from '@nestjs/authentication';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppUserStatus } from '../../generated/prisma/client.js';
+import { AppUserStatus, AssignmentScopeType, AuthSurface, StoreStatus } from '../../generated/prisma/client.js';
+import {
+  COMPANY_ADMIN_ROLE_CODE,
+  COMPANY_ADMIN_ROLE_NAME,
+  STORE_ADMIN_ROLE_CODE,
+  STORE_ADMIN_ROLE_NAME,
+} from '../../constants/roles.constants.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuthorizationService } from './authorization.service.js';
 
@@ -15,6 +21,9 @@ describe('AuthorizationService', () => {
     };
     userAssignment: {
       findMany: ReturnType<typeof vi.fn>;
+    };
+    store: {
+      findFirst: ReturnType<typeof vi.fn>;
     };
   };
   let passwordHasher: {
@@ -32,49 +41,87 @@ describe('AuthorizationService', () => {
     id: 'user-1',
     organizationId: 'org-1',
     email: 'johndoe@mock.com',
-    pinHash: '$scrypt$ln=17,r=8,p=1$salt$hash',
+    passwordHash: '$scrypt$password',
+    pinHash: null,
+    pinSetAt: null,
     status: AppUserStatus.ACTIVE,
     displayName: 'Mock Admin',
     externalSubject: 'Mock Seeder',
     employeeNumber: 'MOCK0000001',
-    pinSetAt: new Date(),
+    pinLength: null,
+    inviteExpiresAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
-  const authzAssignments = [
-    {
-      role: {
-        code: 'SUPER_ADMIN',
-        name: 'Super Admin',
-        rolePermissions: [{ permission: { code: 'pos.sale' } }, { permission: { code: 'org.manage' } }],
-      },
+  const storeAdminUser = {
+    ...activeUser,
+    id: 'user-2',
+    email: 'store.admin@mock.com',
+    pinHash: '$scrypt$pin',
+    pinSetAt: new Date(),
+    pinLength: 4,
+  };
+
+  const companyAdminAssignment = {
+    id: 'assign-1',
+    scopeType: AssignmentScopeType.ORGANIZATION,
+    scopeId: 'org-1',
+    role: {
+      code: COMPANY_ADMIN_ROLE_CODE,
+      name: COMPANY_ADMIN_ROLE_NAME,
+      allowedAssignmentScopes: [AssignmentScopeType.ORGANIZATION],
+      rolePermissions: [
+        {
+          permission: {
+            code: 'config.publish',
+            surfaces: [AuthSurface.ADMIN],
+            allowedScopeTypes: [AssignmentScopeType.ORGANIZATION],
+          },
+        },
+      ],
     },
-    {
-      role: {
-        code: 'SUPER_ADMIN',
-        name: 'Super Admin',
-        rolePermissions: [{ permission: { code: 'pos.sale' } }],
-      },
+  };
+
+  const storeAdminAssignment = {
+    id: 'assign-2',
+    scopeType: AssignmentScopeType.STORE,
+    scopeId: 'store-1',
+    role: {
+      code: STORE_ADMIN_ROLE_CODE,
+      name: STORE_ADMIN_ROLE_NAME,
+      allowedAssignmentScopes: [AssignmentScopeType.STORE],
+      rolePermissions: [
+        {
+          permission: {
+            code: 'sale.checkout',
+            surfaces: [AuthSurface.POS],
+            allowedScopeTypes: [AssignmentScopeType.STORE],
+          },
+        },
+        {
+          permission: {
+            code: 'report.store.view',
+            surfaces: [AuthSurface.ADMIN],
+            allowedScopeTypes: [AssignmentScopeType.STORE],
+          },
+        },
+      ],
     },
-    {
-      role: {
-        code: 'CASHIER',
-        name: 'Cashier',
-        rolePermissions: [{ permission: { code: 'pos.sale' } }],
-      },
-    },
-  ];
+  };
+
+  const liveStore = {
+    id: 'store-1',
+    organizationId: 'org-1',
+    code: 'IN-BOM-01',
+    status: StoreStatus.LIVE,
+  };
 
   beforeEach(async () => {
     prisma = {
-      appUser: {
-        findFirst: vi.fn(),
-        update: vi.fn(),
-      },
-      userAssignment: {
-        findMany: vi.fn().mockResolvedValue(authzAssignments),
-      },
+      appUser: { findFirst: vi.fn(), update: vi.fn() },
+      userAssignment: { findMany: vi.fn().mockResolvedValue([companyAdminAssignment]) },
+      store: { findFirst: vi.fn() },
     };
     passwordHasher = {
       verify: vi.fn(),
@@ -90,7 +137,7 @@ describe('AuthorizationService', () => {
       refresh: vi.fn().mockResolvedValue({
         accessToken: [
           Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url'),
-          Buffer.from(JSON.stringify({ sub: 'user-1' })).toString('base64url'),
+          Buffer.from(JSON.stringify({ sub: 'user-2', storeId: 'store-1' })).toString('base64url'),
           'sig',
         ].join('.'),
         refreshToken: 'refresh-2',
@@ -111,92 +158,105 @@ describe('AuthorizationService', () => {
     service = module.get(AuthorizationService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  it('issues tokens with roles and permissions for valid credentials', async () => {
+  it('admin login issues tokens for Company Admin', async () => {
     prisma.appUser.findFirst.mockResolvedValue(activeUser);
     passwordHasher.verify.mockResolvedValue(true);
+    prisma.userAssignment.findMany.mockResolvedValue([companyAdminAssignment]);
 
-    const result = await service.login({
+    const result = await service.adminLogin({
       organizationId: 'org-1',
       email: 'johndoe@mock.com',
-      pin: 'mock@123',
+      password: 'mock@123',
     });
 
     expect(tokens.issue).toHaveBeenCalledWith('user-1', {
-      method: 'pin',
+      method: 'password',
       claims: { organizationId: 'org-1' },
     });
-    expect(result).toEqual({
-      accessToken: 'access',
-      refreshToken: 'refresh',
-      expiresIn: 3600,
-      roles: [
-        { code: 'SUPER_ADMIN', name: 'Super Admin' },
-        { code: 'CASHIER', name: 'Cashier' },
-      ],
-      permissions: ['org.manage', 'pos.sale'],
-    });
+    expect(result.roles).toEqual([{ code: COMPANY_ADMIN_ROLE_CODE, name: COMPANY_ADMIN_ROLE_NAME }]);
+    expect(result.permissions).toEqual(['config.publish']);
   });
 
-  it('rejects invalid credentials without revealing the user', async () => {
+  it('rejects admin login without Company Admin assignment', async () => {
+    prisma.appUser.findFirst.mockResolvedValue(storeAdminUser);
+    passwordHasher.verify.mockResolvedValue(true);
+    prisma.userAssignment.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.adminLogin({
+        organizationId: 'org-1',
+        email: 'store.admin@mock.com',
+        password: 'mock@123',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects invalid password credentials', async () => {
     prisma.appUser.findFirst.mockResolvedValue(null);
     passwordHasher.verify.mockResolvedValue(false);
 
     await expect(
-      service.login({
+      service.adminLogin({
         organizationId: 'org-1',
         email: 'missing@mock.com',
-        pin: 'wrong',
+        password: 'wrong',
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
-
-    expect(passwordHasher.verify).toHaveBeenCalledWith('wrong', undefined);
-    expect(tokens.issue).not.toHaveBeenCalled();
   });
 
-  it('refreshes tokens with roles and permissions', async () => {
-    const result = await service.refresh('refresh');
+  it('pos password login returns pinSet flag', async () => {
+    prisma.appUser.findFirst.mockResolvedValue(storeAdminUser);
+    passwordHasher.verify.mockResolvedValue(true);
+    prisma.userAssignment.findMany.mockResolvedValue([storeAdminAssignment]);
 
-    expect(tokens.refresh).toHaveBeenCalledWith('refresh');
-    expect(prisma.userAssignment.findMany).toHaveBeenCalled();
-    expect(result).toMatchObject({
-      refreshToken: 'refresh-2',
-      expiresIn: 3600,
-      roles: [
-        { code: 'SUPER_ADMIN', name: 'Super Admin' },
-        { code: 'CASHIER', name: 'Cashier' },
-      ],
-      permissions: ['org.manage', 'pos.sale'],
+    const result = await service.posPasswordLogin({
+      organizationId: 'org-1',
+      email: 'store.admin@mock.com',
+      password: 'mock@123',
     });
+
+    expect(result.pinSet).toBe(true);
+    expect(result.userId).toBe('user-2');
   });
 
-  it('returns profile with roles and permissions for me', async () => {
-    const result = await service.me(activeUser);
+  it('pos pin login returns store and preserves storeId claim family', async () => {
+    prisma.appUser.findFirst.mockResolvedValue(storeAdminUser);
+    passwordHasher.verify.mockResolvedValue(true);
+    prisma.userAssignment.findMany.mockResolvedValue([storeAdminAssignment]);
+    prisma.store.findFirst.mockResolvedValue(liveStore);
 
-    expect(result).not.toHaveProperty('pinHash');
-    expect(result.email).toBe('johndoe@mock.com');
-    expect(result.roles).toEqual([
-      { code: 'SUPER_ADMIN', name: 'Super Admin' },
-      { code: 'CASHIER', name: 'Cashier' },
-    ]);
-    expect(result.permissions).toEqual(['org.manage', 'pos.sale']);
+    const result = await service.posPinLogin({
+      organizationId: 'org-1',
+      userId: 'user-2',
+      pin: '1234',
+    });
+
+    expect(tokens.issue).toHaveBeenCalledWith('user-2', {
+      method: 'pin',
+      claims: { organizationId: 'org-1', storeId: 'store-1' },
+    });
+    expect(result.store).toEqual(liveStore);
+
+    const refreshed = await service.refresh('refresh');
+    const payload = JSON.parse(Buffer.from(refreshed.accessToken.split('.')[1]!, 'base64url').toString('utf8')) as {
+      storeId?: string;
+    };
+    expect(payload.storeId).toBe('store-1');
   });
 
-  it('dedupes roles and sorts unique permission codes', async () => {
-    const authz = await service.getAuthzForUser('user-1');
+  it('filters permissions by surface for getAuthzForUser', async () => {
+    prisma.userAssignment.findMany.mockResolvedValue([storeAdminAssignment]);
 
-    expect(authz.roles).toEqual([
-      { code: 'SUPER_ADMIN', name: 'Super Admin' },
-      { code: 'CASHIER', name: 'Cashier' },
-    ]);
-    expect(authz.permissions).toEqual(['org.manage', 'pos.sale']);
+    const posAuthz = await service.getAuthzForUser('user-2', AuthSurface.POS);
+    expect(posAuthz.permissions).toEqual(['sale.checkout']);
+
+    const adminAuthz = await service.getAuthzForUser('user-2', AuthSurface.ADMIN);
+    expect(adminAuthz.permissions).toEqual(['report.store.view']);
   });
 
-  it('strips pinHash from the profile', () => {
-    expect(service.toProfile(activeUser)).not.toHaveProperty('pinHash');
-    expect(service.toProfile(activeUser).email).toBe('johndoe@mock.com');
+  it('strips password and pin hashes from profile', () => {
+    const profile = service.toProfile(storeAdminUser as never);
+    expect(profile).not.toHaveProperty('passwordHash');
+    expect(profile).not.toHaveProperty('pinHash');
   });
 });

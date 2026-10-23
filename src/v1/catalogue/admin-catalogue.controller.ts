@@ -24,7 +24,7 @@ import { StockService } from './stock.service.js';
 @ApiTags('Admin')
 @ApiBearerAuth('bearer')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
-@Controller('v1/admin')
+@Controller('admin/v1')
 export class AdminCatalogueController {
   constructor(
     private readonly catalogueAdminService: CatalogueAdminService,

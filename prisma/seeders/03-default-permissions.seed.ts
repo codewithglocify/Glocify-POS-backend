@@ -2,60 +2,130 @@ import { PrismaClient } from '../../dist/generated/prisma/client.js';
 
 const PERMISSIONS = [
   {
-    code: 'Associate',
-    description: '',
+    code: 'sale.checkout',
+    description: 'Complete a sale',
+    surfaces: ['POS'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'Senior Associate',
-    description: '',
+    code: 'sale.discount.manual',
+    description: 'Apply a manual discount within role limit',
+    surfaces: ['POS'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'Store Admin',
-    description: 'Manages store catalogues, pricing assignments, and stock cache for stores in scope.',
+    code: 'sale.post_void',
+    description: 'Post-void a completed sale',
+    surfaces: ['POS', 'ADMIN'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'District Manager',
-    description: '',
+    code: 'sale.void',
+    description: 'Void a draft or in-progress sale',
+    surfaces: ['POS'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'Country Manager',
-    description: 'Manages which stores are added to a country and store master data for that country.',
+    code: 'cash.no_sale',
+    description: 'Open drawer with no sale',
+    surfaces: ['POS'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'Finance',
-    description: '',
+    code: 'cash.session.open',
+    description: 'Open a cash session',
+    surfaces: ['POS'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'Loss Prevention',
-    description: '',
+    code: 'cash.session.close',
+    description: 'Close a cash session',
+    surfaces: ['POS', 'ADMIN'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'Tax / Fiscal Admin',
-    description: '',
+    code: 'cash.day.close',
+    description: 'Close the store day',
+    surfaces: ['POS', 'ADMIN'],
+    allowedScopeTypes: ['STORE'],
   },
   {
-    code: 'HQ Admin',
-    description: '',
+    code: 'customer.pii.unmask',
+    description: 'Reveal masked customer contact details',
+    surfaces: ['POS', 'ADMIN'],
+    allowedScopeTypes: ['STORE', 'COUNTRY'],
   },
   {
-    code: 'Support (vendor)',
-    description: '',
+    code: 'report.store.view',
+    description: 'View store operational reports',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['STORE'],
   },
-];
+  {
+    code: 'report.export',
+    description: 'Export reports',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['STORE', 'COUNTRY', 'REGION', 'BRAND', 'ORGANIZATION'],
+  },
+  {
+    code: 'device.terminal.view',
+    description: 'View terminals for a store',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['STORE'],
+  },
+  {
+    code: 'device.terminal.manage',
+    description: 'Register or suspend terminals',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['STORE', 'COUNTRY'],
+  },
+  {
+    code: 'config.read',
+    description: 'Read configuration',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['STORE', 'COUNTRY', 'REGION', 'BRAND', 'ORGANIZATION'],
+  },
+  {
+    code: 'config.publish',
+    description: 'Publish locked or organization configuration',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['ORGANIZATION', 'BRAND'],
+  },
+  {
+    code: 'role.assign',
+    description: 'Assign roles to users',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['ORGANIZATION', 'BRAND', 'COUNTRY'],
+  },
+  {
+    code: 'integration.manage',
+    description: 'Enable or configure integrations',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['ORGANIZATION', 'BRAND'],
+  },
+  {
+    code: 'audit.view',
+    description: 'View audit log',
+    surfaces: ['ADMIN'],
+    allowedScopeTypes: ['STORE', 'COUNTRY', 'REGION', 'BRAND', 'ORGANIZATION'],
+  },
+] as const;
 
 export default async function (prisma: PrismaClient) {
-  await prisma.permission.createMany({
-    data: PERMISSIONS,
-    skipDuplicates: true,
-  });
-
   for (const permission of PERMISSIONS) {
-    if (!permission.description) {
-      continue;
-    }
-    await prisma.permission.updateMany({
+    await prisma.permission.upsert({
       where: { code: permission.code },
-      data: { description: permission.description },
+      create: {
+        code: permission.code,
+        description: permission.description,
+        surfaces: [...permission.surfaces],
+        allowedScopeTypes: [...permission.allowedScopeTypes],
+      },
+      update: {
+        description: permission.description,
+        surfaces: [...permission.surfaces],
+        allowedScopeTypes: [...permission.allowedScopeTypes],
+      },
     });
   }
 }

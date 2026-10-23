@@ -18,7 +18,7 @@ import { OrganizationAdminService } from './organization-admin.service.js';
 @ApiTags('Admin')
 @ApiBearerAuth('bearer')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@Controller('v1/admin/brands')
+@Controller('admin/v1/brands')
 export class AdminBrandController {
   constructor(private readonly organizationAdminService: OrganizationAdminService) {}
 
