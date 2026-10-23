@@ -10,6 +10,7 @@ describe('OrganizationAdminService', () => {
   let prisma: {
     region: { findUnique: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
     country: { findUnique: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
+    currency: { findMany: ReturnType<typeof vi.fn> };
     organizationRegion: {
       create: ReturnType<typeof vi.fn>;
       createMany: ReturnType<typeof vi.fn>;
@@ -43,6 +44,7 @@ describe('OrganizationAdminService', () => {
     prisma = {
       region: { findUnique: vi.fn(), findMany: vi.fn() },
       country: { findUnique: vi.fn(), findMany: vi.fn() },
+      currency: { findMany: vi.fn() },
       organizationRegion: {
         create: vi.fn(),
         createMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -129,5 +131,30 @@ describe('OrganizationAdminService', () => {
   it('returns NotFound when brand missing', async () => {
     prisma.brand.findFirst.mockResolvedValue(null);
     await expect(service.getBrand('org-1', 'brand-1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('listCurrencies defaults to active only and orders by code', async () => {
+    prisma.currency.findMany.mockResolvedValue([
+      { code: 'EUR', isActive: true },
+      { code: 'INR', isActive: true },
+    ]);
+
+    await expect(service.listCurrencies()).resolves.toHaveLength(2);
+
+    expect(prisma.currency.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+      orderBy: { code: 'asc' },
+    });
+  });
+
+  it('listCurrencies returns all when active is false', async () => {
+    prisma.currency.findMany.mockResolvedValue([]);
+
+    await service.listCurrencies(false);
+
+    expect(prisma.currency.findMany).toHaveBeenCalledWith({
+      where: undefined,
+      orderBy: { code: 'asc' },
+    });
   });
 });

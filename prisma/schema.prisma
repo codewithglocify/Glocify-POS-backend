@@ -46,11 +46,31 @@ enum PriceTaxMode {
 }
 
 enum AppUserStatus {
+  INVITED
   ACTIVE
   SUSPENDED
   LEFT
 
   @@map("app_user_status")
+  @@schema("pos")
+}
+
+enum AuthSurface {
+  POS
+  ADMIN
+
+  @@map("auth_surface")
+  @@schema("pos")
+}
+
+enum AssignmentScopeType {
+  ORGANIZATION
+  BRAND
+  REGION
+  COUNTRY
+  STORE
+
+  @@map("assignment_scope_type")
   @@schema("pos")
 }
 
@@ -486,11 +506,12 @@ model OrganizationCountry {
 }
 
 model Role {
-  id             String  @id @default(uuid()) @db.Uuid
-  organizationId String  @map("organization_id") @db.Uuid
-  code           String
-  name           String
-  description    String? @db.Text
+  id                       String                @id @default(uuid()) @db.Uuid
+  organizationId           String                @map("organization_id") @db.Uuid
+  code                     String
+  name                     String
+  description              String?               @db.Text
+  allowedAssignmentScopes  AssignmentScopeType[] @map("allowed_assignment_scopes")
 
   organization    Organization     @relation(fields: [organizationId], references: [id])
   rolePermissions RolePermission[]
@@ -507,10 +528,13 @@ model AppUser {
   externalSubject String        @map("external_subject") @db.Text
   employeeNumber  String?       @map("employee_number")
   displayName     String        @map("display_name")
-  email           String
-  status          AppUserStatus
-  pinHash         String        @map("pin_hash")
-  pinSetAt        DateTime      @map("pin_set_at")
+  email           String?
+  status          AppUserStatus @default(INVITED)
+  passwordHash    String?       @map("password_hash")
+  pinHash         String?       @map("pin_hash")
+  pinLength       Int?          @map("pin_length") @db.SmallInt
+  pinSetAt        DateTime?     @map("pin_set_at") @db.Timestamptz
+  inviteExpiresAt DateTime?     @map("invite_expires_at") @db.Timestamptz
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -523,9 +547,10 @@ model AppUser {
 }
 
 model Permission {
-  id          String @id @default(uuid()) @db.Uuid
-  code        String
-  description String @db.Text
+  code               String                @id
+  description        String                @db.Text
+  surfaces           AuthSurface[]
+  allowedScopeTypes  AssignmentScopeType[] @map("allowed_scope_types")
 
   rolePermissions RolePermission[]
 
@@ -534,31 +559,32 @@ model Permission {
 }
 
 model RolePermission {
-  roleId       String @db.Uuid
-  permissionId String @db.Uuid
+  roleId         String @map("role_id") @db.Uuid
+  permissionCode String @map("permission_code")
 
-  role       Role       @relation(fields: [roleId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code])
 
-  @@unique([roleId, permissionId])
+  @@id([roleId, permissionCode])
   @@map("role_permissions")
   @@schema("pos")
 }
 
 model UserAssignment {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  roleId    String    @map("role_id") @db.Uuid
-  scopeType ScopeType @map("scope_type")
-  scopeId   String    @map("scope_id") @db.Uuid
-  validFrom DateTime  @default(now()) @map("valid_from") @db.Timestamptz
-  validTill DateTime? @map("valid_till") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  roleId    String              @map("role_id") @db.Uuid
+  scopeType AssignmentScopeType @map("scope_type")
+  scopeId   String              @map("scope_id") @db.Uuid
+  validFrom DateTime            @default(now()) @map("valid_from") @db.Timestamptz
+  validTo   DateTime?           @map("valid_to") @db.Timestamptz
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  createdBy String              @map("created_by")
 
   user AppUser @relation(fields: [userId], references: [id])
   role Role    @relation(fields: [roleId], references: [id])
 
+  @@index([userId])
   @@map("user_assignments")
   @@schema("pos")
 }

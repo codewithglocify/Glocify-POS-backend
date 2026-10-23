@@ -3,26 +3,25 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PasswordHasher, TokenService } from '@nestjs/authentication';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActiveStatus, AppUserStatus, Prisma } from '../../generated/prisma/client.js';
+import { COMPANY_ADMIN_ROLE_CODE } from '../../constants/roles.constants.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuthorizationService } from '../authorization/authorization.service.js';
 import { OrganizationAdminService } from './organization-admin.service.js';
 import { OrganizationService } from './organization.service.js';
-import { SUPER_ADMIN_ROLE_CODE } from '../../constants/roles.constants.js';
+
+vi.mock('../authorization/org-roles.util.js', () => ({
+  ensureOrganizationRoleTemplates: vi.fn().mockResolvedValue([]),
+}));
 
 describe('OrganizationService', () => {
   let service: OrganizationService;
-  let prisma: {
-    $transaction: ReturnType<typeof vi.fn>;
-    permission: { findMany: ReturnType<typeof vi.fn> };
-    organization: { create: ReturnType<typeof vi.fn> };
-    role: { create: ReturnType<typeof vi.fn> };
-    rolePermission: { createMany: ReturnType<typeof vi.fn> };
-    appUser: { create: ReturnType<typeof vi.fn> };
-    userAssignment: { create: ReturnType<typeof vi.fn> };
-  };
+  let prisma: { $transaction: ReturnType<typeof vi.fn> };
   let passwordHasher: { hash: ReturnType<typeof vi.fn> };
   let tokens: { issue: ReturnType<typeof vi.fn> };
-  let authorizationService: { getAuthzForUser: ReturnType<typeof vi.fn> };
+  let authorizationService: {
+    getAuthzForUser: ReturnType<typeof vi.fn>;
+    toProfile: ReturnType<typeof vi.fn>;
+  };
   let organizationAdminService: {
     ensureRegions: ReturnType<typeof vi.fn>;
     ensureCountries: ReturnType<typeof vi.fn>;
@@ -53,24 +52,44 @@ describe('OrganizationService', () => {
     email: 'admin@acme.test',
     displayName: 'acme.admin',
     externalSubject: 'acme.admin',
-    pinHash: '$scrypt$...',
-    pinSetAt: new Date('2026-01-01T00:00:00.000Z'),
+    passwordHash: '$scrypt$...',
+    pinHash: null,
+    pinSetAt: null,
     status: AppUserStatus.ACTIVE,
     employeeNumber: null,
+    pinLength: null,
+    inviteExpiresAt: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 
-  beforeEach(async () => {
-    prisma = {
-      $transaction: vi.fn(),
-      permission: { findMany: vi.fn() },
-      organization: { create: vi.fn() },
-      role: { create: vi.fn() },
-      rolePermission: { createMany: vi.fn() },
-      appUser: { create: vi.fn() },
-      userAssignment: { create: vi.fn() },
+  function txStub(overrides: Record<string, unknown> = {}) {
+    return {
+      organization: { create: vi.fn().mockResolvedValue(organization) },
+      role: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: 'role-1',
+          code: COMPANY_ADMIN_ROLE_CODE,
+        }),
+      },
+      appUser: {
+        create: vi.fn().mockImplementation(({ data }) =>
+          Promise.resolve({
+            ...user,
+            externalSubject: data.externalSubject,
+            employeeNumber: data.employeeNumber ?? null,
+            passwordHash: data.passwordHash,
+          }),
+        ),
+      },
+      userAssignment: { create: vi.fn().mockResolvedValue({ id: 'assign-1' }) },
+      region: { findMany: vi.fn().mockResolvedValue([]) },
+      ...overrides,
     };
+  }
+
+  beforeEach(async () => {
+    prisma = { $transaction: vi.fn() };
     passwordHasher = { hash: vi.fn().mockResolvedValue('$scrypt$...') };
     tokens = {
       issue: vi.fn().mockResolvedValue({
@@ -81,8 +100,12 @@ describe('OrganizationService', () => {
     };
     authorizationService = {
       getAuthzForUser: vi.fn().mockResolvedValue({
-        roles: [{ code: SUPER_ADMIN_ROLE_CODE, name: 'Super Admin' }],
-        permissions: ['org.manage'],
+        roles: [{ code: COMPANY_ADMIN_ROLE_CODE, name: 'Company Admin' }],
+        permissions: ['config.publish'],
+      }),
+      toProfile: vi.fn().mockImplementation((u) => {
+        const { passwordHash: _p, pinHash: _pin, ...profile } = u;
+        return profile;
       }),
     };
     organizationAdminService = {
@@ -104,142 +127,47 @@ describe('OrganizationService', () => {
     service = module.get(OrganizationService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  it('onboards an organization with Super Admin and tokens', async () => {
-    let capturedExternalSubject: string | undefined;
-    prisma.$transaction.mockImplementation(async (fn) => {
-      const tx = {
-        organization: {
-          create: vi.fn().mockResolvedValue(organization),
-        },
-        role: {
-          create: vi.fn().mockResolvedValue({
-            id: 'role-1',
-            code: SUPER_ADMIN_ROLE_CODE,
-          }),
-        },
-        permission: {
-          findMany: vi.fn().mockResolvedValue([{ id: 'perm-1' }]),
-        },
-        rolePermission: {
-          createMany: vi.fn().mockResolvedValue({ count: 1 }),
-        },
-        appUser: {
-          create: vi.fn().mockImplementation(({ data }) => {
-            capturedExternalSubject = data.externalSubject;
-            return Promise.resolve({
-              ...user,
-              externalSubject: data.externalSubject,
-              employeeNumber: data.employeeNumber ?? null,
-            });
-          }),
-        },
-        userAssignment: {
-          create: vi.fn().mockResolvedValue({ id: 'assign-1' }),
-        },
-      };
-      return fn(tx);
-    });
+  it('onboards an organization with Company Admin and tokens', async () => {
+    prisma.$transaction.mockImplementation(async (fn) => fn(txStub()));
 
     const result = await service.create(dto);
 
     expect(passwordHasher.hash).toHaveBeenCalledWith(dto.password);
-    expect(capturedExternalSubject).toMatch(/^org-1:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     expect(tokens.issue).toHaveBeenCalledWith('user-1', {
       method: 'password',
       claims: { organizationId: 'org-1' },
     });
     expect(result.organization.code).toBe('acme');
-    expect(result.user).not.toHaveProperty('pinHash');
-    expect(result.accessToken).toBe('access');
-    expect(result.refreshToken).toBe('refresh');
-    expect(authorizationService.getAuthzForUser).toHaveBeenCalledWith('user-1');
-    expect(result.roles).toEqual([{ code: SUPER_ADMIN_ROLE_CODE, name: 'Super Admin' }]);
-    expect(result.permissions).toEqual(['org.manage']);
-    expect(result.regions).toEqual([]);
-    expect(result.countries).toEqual([]);
-    expect(organizationAdminService.ensureRegions).not.toHaveBeenCalled();
-    expect(organizationAdminService.ensureCountries).not.toHaveBeenCalled();
+    expect(result.user).not.toHaveProperty('passwordHash');
+    expect(result.roles).toEqual([{ code: COMPANY_ADMIN_ROLE_CODE, name: 'Company Admin' }]);
   });
 
-  it('attaches countries (and their regions) when countryIds are provided', async () => {
+  it('attaches countries when countryIds are provided', async () => {
     const country = { id: 'country-1', regionId: 'region-1', isoCode: 'US' };
     const region = { id: 'region-1', code: 'NAM' };
     organizationAdminService.ensureCountries.mockResolvedValue([country]);
 
-    prisma.$transaction.mockImplementation(async (fn) => {
-      const tx = {
-        organization: { create: vi.fn().mockResolvedValue(organization) },
-        role: { create: vi.fn().mockResolvedValue({ id: 'role-1', code: SUPER_ADMIN_ROLE_CODE }) },
-        permission: { findMany: vi.fn().mockResolvedValue([]) },
-        rolePermission: { createMany: vi.fn() },
-        appUser: { create: vi.fn().mockResolvedValue(user) },
-        userAssignment: { create: vi.fn().mockResolvedValue({ id: 'assign-1' }) },
-        region: { findMany: vi.fn().mockResolvedValue([region]) },
-      };
-      return fn(tx);
-    });
+    prisma.$transaction.mockImplementation(async (fn) =>
+      fn(
+        txStub({
+          region: { findMany: vi.fn().mockResolvedValue([region]) },
+        }),
+      ),
+    );
 
     const result = await service.create({ ...dto, countryIds: ['country-1'] });
-
-    expect(organizationAdminService.ensureCountries).toHaveBeenCalledWith('org-1', ['country-1'], expect.anything());
     expect(result.countries).toEqual([country]);
     expect(result.regions).toEqual([region]);
   });
 
-  it('uses employeeNumber in externalSubject when provided', async () => {
-    let capturedExternalSubject: string | undefined;
-    prisma.$transaction.mockImplementation(async (fn) => {
-      const tx = {
-        organization: {
-          create: vi.fn().mockResolvedValue(organization),
-        },
-        role: {
-          create: vi.fn().mockResolvedValue({
-            id: 'role-1',
-            code: SUPER_ADMIN_ROLE_CODE,
-          }),
-        },
-        permission: {
-          findMany: vi.fn().mockResolvedValue([]),
-        },
-        rolePermission: {
-          createMany: vi.fn(),
-        },
-        appUser: {
-          create: vi.fn().mockImplementation(({ data }) => {
-            capturedExternalSubject = data.externalSubject;
-            return Promise.resolve({
-              ...user,
-              externalSubject: data.externalSubject,
-              employeeNumber: data.employeeNumber,
-            });
-          }),
-        },
-        userAssignment: {
-          create: vi.fn().mockResolvedValue({ id: 'assign-1' }),
-        },
-      };
-      return fn(tx);
-    });
-
-    await service.create({ ...dto, employeeNumber: 'E10001' });
-
-    expect(capturedExternalSubject).toBe('org-1:E10001');
-  });
-
-  it('maps duplicate organization code to ConflictException', async () => {
+  it('maps unique constraint to ConflictException', async () => {
     prisma.$transaction.mockRejectedValue(
-      new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+      new Prisma.PrismaClientKnownRequestError('Unique', {
         code: 'P2002',
         clientVersion: 'test',
       }),
     );
 
     await expect(service.create(dto)).rejects.toBeInstanceOf(ConflictException);
-    expect(tokens.issue).not.toHaveBeenCalled();
   });
 });

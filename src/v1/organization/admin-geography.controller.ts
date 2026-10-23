@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
   Param,
+  ParseBoolPipe,
   ParseUUIDPipe,
   Post,
   Query,
@@ -19,6 +21,7 @@ import {
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -28,13 +31,14 @@ import { AttachRegionDto } from './dto/attach-region.dto.js';
 import { BatchAttachCountriesDto } from './dto/batch-attach-countries.dto.js';
 import { BatchAttachRegionsDto } from './dto/batch-attach-regions.dto.js';
 import { CountryResponseDto } from './dto/country-response.dto.js';
+import { CurrencyResponseDto } from './dto/currency-response.dto.js';
 import { RegionResponseDto } from './dto/region-response.dto.js';
 import { OrganizationAdminService } from './organization-admin.service.js';
 
 @ApiTags('Admin')
 @ApiBearerAuth('bearer')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@Controller('v1/admin')
+@Controller('admin/v1')
 export class AdminGeographyController {
   constructor(private readonly organizationAdminService: OrganizationAdminService) {}
 
@@ -55,6 +59,23 @@ export class AdminGeographyController {
   @ApiUnauthorizedResponse()
   listCountries(@Query('regionId') regionId?: string) {
     return this.organizationAdminService.listCountries(regionId);
+  }
+
+  @Get('currencies')
+  @ApiOperation({
+    summary: 'List master currencies',
+    description: 'Returns active currencies by default. Pass active=false to include inactive rows.',
+  })
+  @ApiQuery({
+    name: 'active',
+    required: false,
+    type: Boolean,
+    description: 'When false, include inactive currencies. Defaults to true.',
+  })
+  @ApiOkResponse({ type: [CurrencyResponseDto] })
+  @ApiUnauthorizedResponse()
+  listCurrencies(@Query('active', new DefaultValuePipe(true), ParseBoolPipe) active: boolean) {
+    return this.organizationAdminService.listCurrencies(active);
   }
 
   @Get('organizations/me/regions')

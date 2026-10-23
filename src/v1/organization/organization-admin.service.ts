@@ -24,6 +24,17 @@ export class OrganizationAdminService {
     });
   }
 
+  /**
+   * Lists master currencies ordered by code.
+   * Defaults to active only; pass `active: false` to include inactive rows.
+   */
+  listCurrencies(active = true) {
+    return this.prisma.currency.findMany({
+      where: active ? { isActive: true } : undefined,
+      orderBy: { code: 'asc' },
+    });
+  }
+
   listOrganizationRegions(organizationId: string) {
     return this.prisma.organizationRegion.findMany({
       where: { organizationId },

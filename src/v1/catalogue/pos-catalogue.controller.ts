@@ -17,7 +17,7 @@ import { StockService } from './stock.service.js';
 @ApiTags('Catalogue')
 @ApiBearerAuth('bearer')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@Controller('v1/pos')
+@Controller('pos/v1')
 export class PosCatalogueController {
   constructor(
     private readonly catalogueSearchService: CatalogueSearchService,

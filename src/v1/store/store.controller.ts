@@ -29,7 +29,7 @@ import { StoreService } from './store.service.js';
 @ApiTags('Admin')
 @ApiBearerAuth('bearer')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@Controller('v1/admin/stores')
+@Controller('admin/v1/stores')
 export class StoreController {
   constructor(private readonly storeService: StoreService) {}
 
